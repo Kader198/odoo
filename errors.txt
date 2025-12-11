@@ -1,12 +1,9 @@
-UncaughtPromiseError
+Validation Error
 
-Uncaught Promise > View types not defined tree found in act_window action undefined
+The operation cannot be completed:
+- Create/update: a mandatory field is not set.
+- Delete: another model requires the record being deleted. If possible, archive it instead.
 
-Occured on localhost:8068 on 2025-12-11 09:10:44 GMT
+Model: Marketplace Seller (marketplace.seller)
+Field: Contact (partner_id)
 
-Error: View types not defined tree found in act_window action undefined
-    at _executeActWindowAction (http://localhost:8068/web/assets/2/f56ae03/web.assets_web.min.js:10085:26)
-    at doAction (http://localhost:8068/web/assets/2/f56ae03/web.assets_web.min.js:10110:8)
-    at async Object.doActionButton (http://localhost:8068/web/assets/2/f56ae03/web.assets_web.min.js:10121:249)
-    at async execute (http://localhost:8068/web/assets/2/f56ae03/web.assets_web.min.js:9723:301)
-    at async executeButtonCallback (http://localhost:8068/web/assets/2/f56ae03/web.assets_web.min.js:9716:34)

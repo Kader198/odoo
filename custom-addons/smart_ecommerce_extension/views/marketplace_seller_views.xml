@@ -13,7 +13,7 @@
                 <header>
                     <button name="action_add_product" string="Add Product"
                             type="object" class="btn-primary"
-                            invisible="state != 'approved'"/>
+                            invisible="not can_do_commercial_actions"/>
                     <button name="action_submit_for_approval" string="Submit for Approval"
                             type="object" class="btn-primary"
                             invisible="state != 'draft'"/>
@@ -37,6 +37,15 @@
                            statusbar_visible="draft,pending,approved"/>
                 </header>
                 <sheet>
+                    <!-- KYC Alert Banner -->
+                    <div class="alert alert-warning" role="alert"
+                         invisible="can_do_commercial_actions or state in ('draft', 'rejected', 'suspended')">
+                        <strong><i class="fa fa-exclamation-triangle"/> KYC Verification Required</strong>
+                        <p class="mb-0">
+                            <field name="commercial_status_message" readonly="1"/>
+                        </p>
+                    </div>
+                    
                     <div class="oe_button_box" name="button_box">
                         <button class="oe_stat_button" icon="fa-cubes" type="object"
                                 name="action_view_products">
@@ -46,6 +55,26 @@
                                 name="action_view_orders">
                             <field name="order_count" widget="statinfo" string="Orders"/>
                         </button>
+                        <!-- KYC Status Button -->
+                        <button class="oe_stat_button" icon="fa-id-card" type="object"
+                                name="action_verify_kyc"
+                                invisible="kyc_verified or not kyc_doc"
+                                groups="sales_team.group_sale_manager">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value text-warning">
+                                    <i class="fa fa-clock-o"/>
+                                </span>
+                                <span class="o_stat_text">KYC Pending</span>
+                            </div>
+                        </button>
+                        <div class="oe_stat_button" invisible="not kyc_verified">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value text-success">
+                                    <i class="fa fa-check-circle"/>
+                                </span>
+                                <span class="o_stat_text">KYC Verified</span>
+                            </div>
+                        </div>
                     </div>
                     <field name="store_logo" widget="image" class="oe_avatar" options="{'preview_image': 'store_logo', 'size': [128, 128]}"/>
                     <div class="oe_title">
@@ -53,6 +82,9 @@
                         <h1>
                             <field name="company_name" placeholder="Store/Company Name"/>
                         </h1>
+                        <div class="text-muted" invisible="can_do_commercial_actions">
+                            <field name="commercial_status_message" readonly="1"/>
+                        </div>
                     </div>
                     
                     <group>
@@ -82,6 +114,79 @@
                     </group>
                     
                     <notebook>
+                        <!-- Tab 1: KYC & Documents -->
+                        <page string="KYC &amp; Documents" name="documents">
+                            <!-- KYC Status Banner -->
+                            <div class="alert alert-success" role="alert" invisible="not kyc_verified">
+                                <i class="fa fa-check-circle"/> <strong>KYC Verified</strong> - 
+                                Verified on <field name="kyc_verified_date" readonly="1" widget="date"/> 
+                                by <field name="kyc_verified_by" readonly="1" class="d-inline"/>
+                            </div>
+                            <div class="alert alert-warning" role="alert" 
+                                 invisible="kyc_verified or not kyc_doc or kyc_rejection_reason">
+                                <i class="fa fa-clock-o"/> <strong>KYC Pending Review</strong> - 
+                                Documents have been submitted and are awaiting verification.
+                            </div>
+                            <div class="alert alert-danger" role="alert" invisible="not kyc_rejection_reason">
+                                <i class="fa fa-times-circle"/> <strong>KYC Rejected</strong>
+                                <p class="mb-0 mt-2"><field name="kyc_rejection_reason" readonly="1"/></p>
+                            </div>
+                            <div class="alert alert-info" role="alert" invisible="kyc_doc">
+                                <i class="fa fa-info-circle"/> <strong>KYC Required</strong> - 
+                                Please upload your KYC documents to enable product publishing and order management.
+                            </div>
+                            
+                            <group>
+                                <group string="KYC Document">
+                                    <field name="kyc_doc" filename="kyc_doc_filename"/>
+                                    <field name="kyc_doc_filename" invisible="1"/>
+                                    <field name="kyc_status" widget="badge"
+                                           decoration-success="kyc_status == 'verified'"
+                                           decoration-warning="kyc_status == 'pending'"
+                                           decoration-danger="kyc_status == 'rejected'"
+                                           decoration-info="kyc_status == 'not_submitted'"/>
+                                    <field name="kyc_verified" invisible="1"/>
+                                    <field name="can_do_commercial_actions" string="Can Publish Products" 
+                                           widget="boolean" readonly="1"/>
+                                </group>
+                                <group string="Business License">
+                                    <field name="business_license" filename="business_license_filename"/>
+                                    <field name="business_license_filename" invisible="1"/>
+                                </group>
+                            </group>
+                            
+                            <!-- KYC Action Buttons for Managers -->
+                            <group string="KYC Actions" groups="sales_team.group_sale_manager"
+                                   invisible="not kyc_doc">
+                                <div class="d-flex gap-2">
+                                    <button name="action_verify_kyc" string="✓ Verify KYC"
+                                            type="object" class="btn btn-success"
+                                            invisible="kyc_verified"/>
+                                    <button name="action_reject_kyc" string="✗ Reject KYC"
+                                            type="object" class="btn btn-danger"
+                                            invisible="kyc_verified"/>
+                                    <button name="action_request_kyc_resubmission" 
+                                            string="↺ Request Resubmission"
+                                            type="object" class="btn btn-warning"
+                                            invisible="not kyc_verified"
+                                            confirm="This will clear the current KYC documents and require the seller to resubmit. Continue?"/>
+                                </div>
+                            </group>
+                        </page>
+                        
+                        <!-- Tab 2: Store Settings -->
+                        <page string="Store Settings" name="store">
+                            <group>
+                                <field name="store_description" widget="html"/>
+                            </group>
+                            <group>
+                                <group>
+                                    <field name="store_banner" widget="image" options="{'size': [300, 100]}"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <!-- Tab 3: Products -->
                         <page string="Products" name="products">
                             <field name="product_ids" mode="kanban" context="{'default_seller_id': id, 'default_sale_ok': True}">
                                 <kanban class="o_kanban_mobile">
@@ -122,37 +227,7 @@
                             </div>
                         </page>
                         
-                        <page string="KYC &amp; Documents" name="documents">
-                            <group>
-                                <group string="KYC Document">
-                                    <field name="kyc_doc" filename="kyc_doc_filename"/>
-                                    <field name="kyc_doc_filename" invisible="1"/>
-                                    <field name="kyc_verified"/>
-                                    <field name="kyc_verified_date" invisible="not kyc_verified"/>
-                                    <field name="kyc_verified_by" invisible="not kyc_verified"/>
-                                    <button name="action_verify_kyc" string="Verify KYC"
-                                            type="object" class="btn-primary"
-                                            invisible="kyc_verified or not kyc_doc"
-                                            groups="sales_team.group_sale_manager"/>
-                                </group>
-                                <group string="Business License">
-                                    <field name="business_license" filename="business_license_filename"/>
-                                    <field name="business_license_filename" invisible="1"/>
-                                </group>
-                            </group>
-                        </page>
-                        
-                        <page string="Store Settings" name="store">
-                            <group>
-                                <field name="store_description" widget="html"/>
-                            </group>
-                            <group>
-                                <group>
-                                    <field name="store_banner" widget="image" options="{'size': [300, 100]}"/>
-                                </group>
-                            </group>
-                        </page>
-                        
+                        <!-- Tab 4: Statistics -->
                         <page string="Statistics" name="stats">
                             <group>
                                 <group>
@@ -189,24 +264,31 @@
         <field name="arch" type="xml">
             <list string="Sellers" 
                   decoration-muted="state == 'suspended'"
-                  decoration-success="state == 'approved'"
-                  decoration-warning="state == 'pending'"
+                  decoration-success="can_do_commercial_actions"
+                  decoration-warning="state == 'pending' or (state == 'approved' and not kyc_verified)"
                   decoration-danger="state == 'rejected'">
                 <field name="company_name"/>
                 <field name="user_id"/>
                 <field name="email"/>
                 <field name="phone"/>
                 <field name="city"/>
-                <field name="kyc_verified" widget="boolean"/>
+                <field name="kyc_status" widget="badge"
+                       decoration-success="kyc_status == 'verified'"
+                       decoration-warning="kyc_status == 'pending'"
+                       decoration-danger="kyc_status == 'rejected'"
+                       decoration-info="kyc_status == 'not_submitted'"
+                       string="KYC"/>
                 <field name="state" widget="badge"
                        decoration-info="state == 'draft'"
                        decoration-warning="state == 'pending'"
                        decoration-success="state == 'approved'"
                        decoration-danger="state in ('suspended', 'rejected')"/>
+                <field name="can_do_commercial_actions" string="Active" widget="boolean"/>
                 <field name="product_count"/>
                 <field name="total_sales" sum="Total Sales"/>
-                <field name="rating" widget="priority"/>
+                <field name="rating" widget="float" digits="[2,1]"/>
                 <field name="currency_id" column_invisible="1"/>
+                <field name="kyc_verified" column_invisible="1"/>
             </list>
         </field>
     </record>
@@ -226,6 +308,8 @@
                 <field name="total_sales"/>
                 <field name="rating"/>
                 <field name="kyc_verified"/>
+                <field name="kyc_status"/>
+                <field name="can_do_commercial_actions"/>
                 <templates>
                     <t t-name="card">
                         <div class="d-flex">
@@ -239,12 +323,27 @@
                                     <span class="badge bg-primary">
                                         <i class="fa fa-cubes me-1"/><field name="product_count"/> products
                                     </span>
-                                    <span t-if="record.kyc_verified.raw_value" class="badge bg-success ms-1">
-                                        <i class="fa fa-check me-1"/>KYC
+                                </div>
+                                <div class="mt-1">
+                                    <!-- KYC Status Badges -->
+                                    <span t-if="record.can_do_commercial_actions.raw_value" class="badge bg-success">
+                                        <i class="fa fa-check-circle me-1"/>Active
+                                    </span>
+                                    <span t-elif="record.kyc_status.raw_value == 'verified'" class="badge bg-success">
+                                        <i class="fa fa-check me-1"/>KYC ✓
+                                    </span>
+                                    <span t-elif="record.kyc_status.raw_value == 'pending'" class="badge bg-warning">
+                                        <i class="fa fa-clock-o me-1"/>KYC Pending
+                                    </span>
+                                    <span t-elif="record.kyc_status.raw_value == 'rejected'" class="badge bg-danger">
+                                        <i class="fa fa-times me-1"/>KYC Rejected
+                                    </span>
+                                    <span t-else="" class="badge bg-secondary">
+                                        <i class="fa fa-id-card me-1"/>KYC Required
                                     </span>
                                 </div>
                                 <div class="mt-1">
-                                    <field name="rating" widget="priority"/>
+                                    <field name="rating" widget="float" digits="[2,1]"/>
                                 </div>
                             </div>
                         </div>
@@ -265,15 +364,33 @@
                 <field name="email"/>
                 <field name="city"/>
                 <separator/>
+                <!-- Quick Filters for KYC Status -->
+                <filter string="Active (KYC Verified)" name="active_sellers" 
+                        domain="[('can_do_commercial_actions', '=', True)]"
+                        help="Sellers who are approved and KYC verified - can publish products"/>
+                <filter string="Needs KYC Review" name="kyc_needs_review" 
+                        domain="[('kyc_doc', '!=', False), ('kyc_verified', '=', False), ('kyc_rejection_reason', '=', False)]"
+                        help="Sellers who have submitted KYC but are awaiting verification"/>
+                <separator/>
+                <!-- Account Status -->
                 <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
-                <filter string="Pending" name="pending" domain="[('state', '=', 'pending')]"/>
+                <filter string="Pending Approval" name="pending" domain="[('state', '=', 'pending')]"/>
                 <filter string="Approved" name="approved" domain="[('state', '=', 'approved')]"/>
                 <filter string="Suspended" name="suspended" domain="[('state', '=', 'suspended')]"/>
+                <filter string="Rejected" name="rejected" domain="[('state', '=', 'rejected')]"/>
                 <separator/>
+                <!-- KYC Status -->
                 <filter string="KYC Verified" name="kyc_verified" domain="[('kyc_verified', '=', True)]"/>
-                <filter string="KYC Pending" name="kyc_pending" domain="[('kyc_verified', '=', False), ('kyc_doc', '!=', False)]"/>
+                <filter string="KYC Pending" name="kyc_pending" domain="[('kyc_status', '=', 'pending')]"/>
+                <filter string="KYC Rejected" name="kyc_rejected" domain="[('kyc_status', '=', 'rejected')]"/>
+                <filter string="KYC Not Submitted" name="kyc_not_submitted" domain="[('kyc_status', '=', 'not_submitted')]"/>
+                <separator/>
+                <!-- Commercial Capability -->
+                <filter string="Can Sell" name="can_sell" domain="[('can_do_commercial_actions', '=', True)]"/>
+                <filter string="Cannot Sell" name="cannot_sell" domain="[('can_do_commercial_actions', '=', False)]"/>
                 <group expand="0" string="Group By">
                     <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="KYC Status" name="group_kyc_status" context="{'group_by': 'kyc_status'}"/>
                     <filter string="City" name="group_city" context="{'group_by': 'city'}"/>
                     <filter string="Country" name="group_country" context="{'group_by': 'country_id'}"/>
                 </group>
@@ -344,6 +461,29 @@
                 </group>
                 <footer>
                     <button name="action_suspend" string="Suspend" type="object" class="btn-warning"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    
+    <!-- KYC Reject Wizard -->
+    <record id="view_marketplace_seller_kyc_reject_wizard_form" model="ir.ui.view">
+        <field name="name">marketplace.seller.kyc.reject.wizard.form</field>
+        <field name="model">marketplace.seller.kyc.reject.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Reject KYC Documents">
+                <div class="alert alert-warning" role="alert">
+                    <i class="fa fa-exclamation-triangle"/> 
+                    Rejecting KYC will prevent the seller from publishing products and managing orders.
+                </div>
+                <group>
+                    <field name="seller_id" readonly="1"/>
+                    <field name="reason" widget="text" 
+                           placeholder="Please explain why the KYC documents were rejected and what the seller needs to provide (e.g., 'Document is expired', 'Image is blurry', 'Missing business license')..."/>
+                </group>
+                <footer>
+                    <button name="action_reject_kyc" string="Reject KYC" type="object" class="btn-danger"/>
                     <button string="Cancel" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>

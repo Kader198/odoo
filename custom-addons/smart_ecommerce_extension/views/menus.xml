@@ -12,6 +12,125 @@
         sequence="25"/>
     
     <!-- ============================================================ -->
+    <!-- SELLERS (STORES) SECTION - TOP PRIORITY -->
+    <!-- ============================================================ -->
+    
+    <menuitem 
+        id="menu_smart_sellers"
+        name="Sellers (Stores)"
+        parent="menu_smart_ecommerce_root"
+        sequence="5"/>
+    
+    <!-- All Sellers Action -->
+    <record id="action_marketplace_sellers_all" model="ir.actions.act_window">
+        <field name="name">All Sellers</field>
+        <field name="res_model">marketplace.seller</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No sellers registered yet
+            </p>
+            <p>
+                Marketplace sellers will appear here once they register.
+                Sellers must complete KYC verification before they can publish products or manage orders.
+            </p>
+        </field>
+    </record>
+    
+    <menuitem 
+        id="menu_smart_all_sellers"
+        name="All Sellers"
+        parent="menu_smart_sellers"
+        action="action_marketplace_sellers_all"
+        sequence="10"/>
+    
+    <!-- Pending KYC Verification Action -->
+    <record id="action_marketplace_sellers_kyc_pending" model="ir.actions.act_window">
+        <field name="name">Pending KYC Verification</field>
+        <field name="res_model">marketplace.seller</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="domain">[('kyc_verified', '=', False), ('kyc_doc', '!=', False)]</field>
+        <field name="context">{'search_default_pending': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No pending KYC verifications
+            </p>
+            <p>
+                Sellers who have submitted KYC documents but are awaiting verification will appear here.
+            </p>
+        </field>
+    </record>
+    
+    <menuitem 
+        id="menu_smart_kyc_pending"
+        name="Pending KYC Verification"
+        parent="menu_smart_sellers"
+        action="action_marketplace_sellers_kyc_pending"
+        sequence="15"/>
+    
+    <menuitem 
+        id="menu_smart_pending_sellers"
+        name="Pending Approvals"
+        parent="menu_smart_sellers"
+        action="action_marketplace_sellers_pending"
+        sequence="20"/>
+    
+    <!-- Approved & Active Sellers Action -->
+    <record id="action_marketplace_sellers_active" model="ir.actions.act_window">
+        <field name="name">Active Sellers</field>
+        <field name="res_model">marketplace.seller</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="domain">[('state', '=', 'approved'), ('kyc_verified', '=', True)]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No active sellers yet
+            </p>
+            <p>
+                Sellers who are approved and have completed KYC verification will appear here.
+                These sellers can publish products and manage orders.
+            </p>
+        </field>
+    </record>
+    
+    <menuitem 
+        id="menu_smart_active_sellers"
+        name="Active Sellers"
+        parent="menu_smart_sellers"
+        action="action_marketplace_sellers_active"
+        sequence="25"/>
+    
+    <!-- Suspended Sellers Action -->
+    <record id="action_marketplace_sellers_suspended" model="ir.actions.act_window">
+        <field name="name">Suspended Sellers</field>
+        <field name="res_model">marketplace.seller</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="domain">[('state', '=', 'suspended')]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No suspended sellers
+            </p>
+        </field>
+    </record>
+    
+    <menuitem 
+        id="menu_smart_suspended_sellers"
+        name="Suspended Sellers"
+        parent="menu_smart_sellers"
+        action="action_marketplace_sellers_suspended"
+        sequence="30"/>
+    
+    <!-- ============================================================ -->
+    <!-- CATEGORIES SECTION -->
+    <!-- ============================================================ -->
+    
+    <menuitem 
+        id="menu_smart_categories"
+        name="Categories"
+        parent="menu_smart_ecommerce_root"
+        sequence="10"/>
+    
+    <!-- ============================================================ -->
     <!-- PRODUCTS SECTION -->
     <!-- ============================================================ -->
     
@@ -19,7 +138,7 @@
         id="menu_smart_products"
         name="Products"
         parent="menu_smart_ecommerce_root"
-        sequence="10"/>
+        sequence="15"/>
     
     <!-- All Products Action -->
     <record id="action_smart_products" model="ir.actions.act_window">
@@ -96,15 +215,7 @@
         action="action_products_out_of_stock"
         sequence="40"/>
     
-    <!-- ============================================================ -->
-    <!-- CATEGORIES SECTION -->
-    <!-- ============================================================ -->
-    
-    <menuitem 
-        id="menu_smart_categories"
-        name="Categories"
-        parent="menu_smart_ecommerce_root"
-        sequence="20"/>
+    <!-- Note: Categories section moved above -->
     
     <!-- Product Categories Action -->
     <record id="action_smart_product_categories" model="ir.actions.act_window">
@@ -217,7 +328,7 @@
         id="menu_smart_orders"
         name="Orders"
         parent="menu_smart_ecommerce_root"
-        sequence="30"/>
+        sequence="20"/>
     
     <!-- My Orders Action (Website Orders for current user) -->
     <record id="action_smart_my_orders" model="ir.actions.act_window">
@@ -323,7 +434,7 @@
         id="menu_smart_delivery"
         name="Delivery"
         parent="menu_smart_ecommerce_root"
-        sequence="40"/>
+        sequence="25"/>
     
     <menuitem 
         id="menu_smart_delivery_zones"
@@ -340,7 +451,7 @@
         id="menu_smart_analytics"
         name="Analytics"
         parent="menu_smart_ecommerce_root"
-        sequence="50"/>
+        sequence="30"/>
     
     <!-- Analytics Dashboard -->
     <menuitem 
@@ -403,29 +514,7 @@
         action="action_analytics_wizard"
         sequence="90"/>
     
-    <!-- ============================================================ -->
-    <!-- MARKETPLACE SELLERS SECTION -->
-    <!-- ============================================================ -->
-    
-    <menuitem 
-        id="menu_smart_sellers"
-        name="Sellers"
-        parent="menu_smart_ecommerce_root"
-        sequence="60"/>
-    
-    <menuitem 
-        id="menu_smart_all_sellers"
-        name="All Sellers"
-        parent="menu_smart_sellers"
-        action="action_marketplace_sellers"
-        sequence="10"/>
-    
-    <menuitem 
-        id="menu_smart_pending_sellers"
-        name="Pending Approvals"
-        parent="menu_smart_sellers"
-        action="action_marketplace_sellers_pending"
-        sequence="20"/>
+    <!-- Note: Sellers section moved to top of menu hierarchy -->
     
     <!-- ============================================================ -->
     <!-- CONFIGURATION SECTION -->
@@ -435,7 +524,7 @@
         id="menu_smart_configuration"
         name="Configuration"
         parent="menu_smart_ecommerce_root"
-        sequence="90"/>
+        sequence="50"/>
     
     <menuitem 
         id="menu_smart_config_delivery_zones"

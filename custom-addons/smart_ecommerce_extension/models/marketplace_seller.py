@@ -23,13 +23,8 @@ class MarketplaceSeller(models.Model):
         tracking=True,
         help='The user account associated with this seller',
     )
-    partner_id = fields.Many2one(
-        'res.partner',
-        string='Contact',
-        related='user_id.partner_id',
-        store=True,
-        readonly=True,
-    )
+    # partner_id is inherited from smart_marketplace_core (required field)
+    # We populate it automatically from user_id via create/write/onchange methods
     company_name = fields.Char(
         string='Company/Store Name',
         required=True,
@@ -72,6 +67,35 @@ class MarketplaceSeller(models.Model):
         'res.users',
         string='Verified By',
         readonly=True,
+    )
+    kyc_rejection_reason = fields.Text(
+        string='KYC Rejection Reason',
+        tracking=True,
+    )
+    
+    # ==========================================
+    # KYC STATUS COMPUTED FIELDS
+    # ==========================================
+    
+    can_do_commercial_actions = fields.Boolean(
+        string='Can Do Commercial Actions',
+        compute='_compute_can_do_commercial_actions',
+        store=True,
+        help='Indicates if seller can publish products, manage orders, and perform commercial actions. '
+             'Requires both approval and KYC verification.',
+    )
+    
+    kyc_status = fields.Selection([
+        ('not_submitted', 'Not Submitted'),
+        ('pending', 'Pending Review'),
+        ('verified', 'Verified'),
+        ('rejected', 'Rejected'),
+    ], string='KYC Status', compute='_compute_kyc_status', store=True)
+    
+    commercial_status_message = fields.Char(
+        string='Commercial Status',
+        compute='_compute_commercial_status_message',
+        help='Message explaining why commercial actions may be restricted',
     )
     
     # Business Documents
@@ -148,6 +172,57 @@ class MarketplaceSeller(models.Model):
         ('company_name_unique', 'UNIQUE(company_name)', 'This store name is already taken!'),
     ]
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Override create to set required fields before validation"""
+        for vals in vals_list:
+            user = None
+            # If user_id is set, get the user record
+            if vals.get('user_id'):
+                user = self.env['res.users'].browse(vals['user_id'])
+                # Set partner_id from user if not already set
+                if not vals.get('partner_id') and user.exists() and user.partner_id:
+                    vals['partner_id'] = user.partner_id.id
+            
+            # Set name if not already set (required field)
+            if not vals.get('name'):
+                if vals.get('company_name'):
+                    vals['name'] = vals['company_name']
+                elif user and user.exists():
+                    vals['name'] = user.name
+                else:
+                    vals['name'] = _('New Seller')
+        
+        return super().create(vals_list)
+
+    def write(self, vals):
+        """Override write to update related fields when user_id or company_name changes"""
+        # Update partner_id when user_id changes
+        if vals.get('user_id'):
+            user = self.env['res.users'].browse(vals['user_id'])
+            if user.exists() and user.partner_id:
+                vals['partner_id'] = user.partner_id.id
+        
+        # Update name when company_name changes
+        if vals.get('company_name'):
+            vals['name'] = vals['company_name']
+        
+        return super().write(vals)
+
+    @api.onchange('user_id')
+    def _onchange_user_id(self):
+        """Update partner_id and name when user is changed in the form"""
+        if self.user_id:
+            self.partner_id = self.user_id.partner_id
+            if not self.company_name:
+                self.name = self.user_id.name
+
+    @api.onchange('company_name')
+    def _onchange_company_name(self):
+        """Update name when company_name is changed"""
+        if self.company_name:
+            self.name = self.company_name
+
     @api.depends('user_id', 'company_name')
     def _compute_name(self):
         for seller in self:
@@ -157,6 +232,54 @@ class MarketplaceSeller(models.Model):
                 seller.name = seller.user_id.name
             else:
                 seller.name = _('New Seller')
+
+    @api.depends('state', 'kyc_verified')
+    def _compute_can_do_commercial_actions(self):
+        """
+        Compute whether seller can perform commercial actions.
+        Requires BOTH state='approved' AND kyc_verified=True.
+        """
+        for seller in self:
+            seller.can_do_commercial_actions = (
+                seller.state == 'approved' and seller.kyc_verified
+            )
+
+    @api.depends('kyc_doc', 'kyc_verified', 'kyc_rejection_reason')
+    def _compute_kyc_status(self):
+        """Compute the KYC verification status"""
+        for seller in self:
+            if seller.kyc_verified:
+                seller.kyc_status = 'verified'
+            elif seller.kyc_rejection_reason:
+                seller.kyc_status = 'rejected'
+            elif seller.kyc_doc:
+                seller.kyc_status = 'pending'
+            else:
+                seller.kyc_status = 'not_submitted'
+
+    @api.depends('state', 'kyc_verified', 'kyc_status')
+    def _compute_commercial_status_message(self):
+        """Compute a human-readable message about commercial status"""
+        for seller in self:
+            if seller.can_do_commercial_actions:
+                seller.commercial_status_message = _('✓ Active - Can publish products and manage orders')
+            elif seller.state == 'suspended':
+                seller.commercial_status_message = _('⚠ Account suspended - Contact support')
+            elif seller.state == 'rejected':
+                seller.commercial_status_message = _('✗ Application rejected')
+            elif seller.state != 'approved':
+                seller.commercial_status_message = _('⏳ Account pending approval')
+            elif not seller.kyc_verified:
+                if seller.kyc_status == 'not_submitted':
+                    seller.commercial_status_message = _('⚠ Please submit KYC documents')
+                elif seller.kyc_status == 'pending':
+                    seller.commercial_status_message = _('⏳ KYC verification in progress')
+                elif seller.kyc_status == 'rejected':
+                    seller.commercial_status_message = _('✗ KYC rejected - Please resubmit')
+                else:
+                    seller.commercial_status_message = _('⚠ KYC verification required')
+            else:
+                seller.commercial_status_message = _('⚠ Commercial actions restricted')
 
     @api.depends('product_ids')
     def _compute_statistics(self):
@@ -189,6 +312,68 @@ class MarketplaceSeller(models.Model):
         for seller in self:
             if seller.commission_rate < 0 or seller.commission_rate > 100:
                 raise ValidationError(_('Commission rate must be between 0 and 100%'))
+
+    # ==========================================
+    # KYC ENFORCEMENT METHODS
+    # ==========================================
+
+    def ensure_can_do_commercial_actions(self):
+        """
+        Ensure seller can perform commercial actions (publish products, manage orders, etc.)
+        Raises UserError if seller cannot perform commercial actions.
+        """
+        self.ensure_one()
+        if not self.can_do_commercial_actions:
+            if self.state != 'approved':
+                raise UserError(_(
+                    'Your seller account must be approved before you can perform this action.\n'
+                    'Current status: %s'
+                ) % dict(self._fields['state'].selection).get(self.state, self.state))
+            elif not self.kyc_verified:
+                if self.kyc_status == 'not_submitted':
+                    raise UserError(_(
+                        'KYC verification is required before you can perform this action.\n'
+                        'Please upload your KYC documents (ID, business license, etc.) and wait for verification.'
+                    ))
+                elif self.kyc_status == 'pending':
+                    raise UserError(_(
+                        'Your KYC documents are being reviewed.\n'
+                        'Please wait for verification before performing this action.'
+                    ))
+                elif self.kyc_status == 'rejected':
+                    raise UserError(_(
+                        'Your KYC verification was rejected.\n'
+                        'Reason: %s\n'
+                        'Please upload new documents and resubmit.'
+                    ) % (self.kyc_rejection_reason or _('No reason provided')))
+                else:
+                    raise UserError(_('KYC verification is required before you can perform this action.'))
+            else:
+                raise UserError(_('You cannot perform this action. Please contact support.'))
+
+    def check_can_publish_products(self):
+        """Check if seller can publish products. Returns True/False with message."""
+        self.ensure_one()
+        if self.can_do_commercial_actions:
+            return True, _('You can publish products.')
+        
+        if self.state != 'approved':
+            return False, _('Your account must be approved first.')
+        if not self.kyc_verified:
+            return False, _('KYC verification required to publish products.')
+        return False, _('Commercial actions are restricted.')
+
+    def check_can_manage_orders(self):
+        """Check if seller can manage orders. Returns True/False with message."""
+        self.ensure_one()
+        if self.can_do_commercial_actions:
+            return True, _('You can manage orders.')
+        
+        if self.state != 'approved':
+            return False, _('Your account must be approved first.')
+        if not self.kyc_verified:
+            return False, _('KYC verification required to manage orders.')
+        return False, _('Commercial actions are restricted.')
 
     # ==========================================
     # STATE ACTIONS
@@ -253,12 +438,42 @@ class MarketplaceSeller(models.Model):
     def action_verify_kyc(self):
         """Mark KYC as verified"""
         self.ensure_one()
+        if not self.kyc_doc:
+            raise UserError(_('No KYC document uploaded. Cannot verify.'))
         self.write({
             'kyc_verified': True,
             'kyc_verified_date': fields.Date.today(),
             'kyc_verified_by': self.env.user.id,
+            'kyc_rejection_reason': False,  # Clear any previous rejection
         })
         self.message_post(body=_('KYC verified by %s') % self.env.user.name)
+        
+        # Send notification email
+        template = self.env.ref('smart_ecommerce_extension.email_kyc_verified', raise_if_not_found=False)
+        if template:
+            template.send_mail(self.id, force_send=True)
+
+    def action_reject_kyc(self):
+        """Reject KYC - opens wizard for reason"""
+        self.ensure_one()
+        return {
+            'name': _('Reject KYC'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'marketplace.seller.kyc.reject.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_seller_id': self.id},
+        }
+
+    def action_request_kyc_resubmission(self):
+        """Request seller to resubmit KYC documents"""
+        self.ensure_one()
+        self.write({
+            'kyc_verified': False,
+            'kyc_doc': False,
+            'kyc_doc_filename': False,
+        })
+        self.message_post(body=_('KYC document cleared. Seller needs to resubmit.'))
 
     # ==========================================
     # VIEW ACTIONS
@@ -308,8 +523,11 @@ class MarketplaceSeller(models.Model):
         }
 
     def action_add_product(self):
-        """Quick action to add a new product"""
+        """Quick action to add a new product - requires KYC verification"""
         self.ensure_one()
+        # Check if seller can perform commercial actions
+        self.ensure_can_do_commercial_actions()
+        
         return {
             'name': _('New Product'),
             'type': 'ir.actions.act_window',
@@ -319,7 +537,7 @@ class MarketplaceSeller(models.Model):
             'context': {
                 'default_seller_id': self.id,
                 'default_sale_ok': True,
-                'default_is_published': True,
+                'default_is_published': False,  # Don't auto-publish
                 'default_type': 'consu',
                 'default_is_storable': True,
             },
@@ -455,5 +673,32 @@ class MarketplaceSellerSuspendWizard(models.TransientModel):
         self.seller_id.message_post(
             body=_('Seller suspended. Reason: %s') % self.reason
         )
+        return {'type': 'ir.actions.act_window_close'}
+
+
+class MarketplaceSellerKYCRejectWizard(models.TransientModel):
+    _name = 'marketplace.seller.kyc.reject.wizard'
+    _description = 'Reject KYC Wizard'
+
+    seller_id = fields.Many2one('marketplace.seller', required=True)
+    reason = fields.Text(string='Rejection Reason', required=True,
+                         help='Explain why the KYC documents were rejected and what the seller needs to provide.')
+
+    def action_reject_kyc(self):
+        """Reject KYC documents with reason"""
+        self.ensure_one()
+        self.seller_id.write({
+            'kyc_verified': False,
+            'kyc_rejection_reason': self.reason,
+        })
+        self.seller_id.message_post(
+            body=_('KYC rejected by %s. Reason: %s') % (self.env.user.name, self.reason)
+        )
+        
+        # Send notification email
+        template = self.env.ref('smart_ecommerce_extension.email_kyc_rejected', raise_if_not_found=False)
+        if template:
+            template.send_mail(self.seller_id.id, force_send=True)
+        
         return {'type': 'ir.actions.act_window_close'}
 

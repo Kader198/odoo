@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data noupdate="1">
-        <!-- Delivery Zone Rules -->
+        <!-- ============================================================ -->
+        <!-- DELIVERY ZONE RULES -->
+        <!-- ============================================================ -->
         
         <!-- Public users can only read active delivery zones -->
         <record id="delivery_zone_public_read" model="ir.rule">
@@ -38,6 +40,41 @@
             <field name="perm_create" eval="False"/>
             <field name="perm_unlink" eval="False"/>
         </record>
+        
+        <!-- ============================================================ -->
+        <!-- MARKETPLACE SELLER RULES -->
+        <!-- ============================================================ -->
+        
+        <!-- Portal sellers can only read/write their own seller record -->
+        <record id="marketplace_seller_own_record" model="ir.rule">
+            <field name="name">Seller: Own Record Only (Portal)</field>
+            <field name="model_id" ref="smart_marketplace_core.model_marketplace_seller"/>
+            <field name="domain_force">[('user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+        
+        <!-- 
+        ============================================================
+        KYC ENFORCEMENT NOTES
+        ============================================================
+        
+        KYC enforcement is primarily handled at the Python level through:
+        1. Constraints in product_template.py - prevents publishing if seller KYC not verified
+        2. Write/Create overrides - blocks publishing for non-KYC sellers  
+        3. ensure_can_do_commercial_actions() method - raises UserError if KYC not verified
+        
+        This approach is more reliable than complex ir.rule domains and provides
+        better user feedback with clear error messages.
+        
+        The can_do_commercial_actions field on marketplace.seller requires:
+        - state = 'approved' 
+        - kyc_verified = True
+        -->
+        
     </data>
 </odoo>
 

@@ -1,14 +1,43 @@
 Contributing to Odoo
-====================
+./run_odoo.sh	Start Odoo normally
+./run_odoo.sh -u MODULE	Upgrade specific module(s)
+./run_odoo.sh -i MODULE	Install specific module(s) 
+./run_odoo.sh --fresh	Clear all cache and start fresh
+./run_odoo.sh --init-demo	Initialize DB with demo data (RESETS DB!)
+./run_odoo.sh --clear-cache	Only clear cache, don't start
+./run_odoo.sh --install-custom	Install ALL custom-addons modules
+./run_odoo.sh --upgrade-custom	Upgrade ALL custom-addons modules
+./run_odoo.sh --list-custom	List all custom-addons modules
 
-[Full contribution guidelines](https://github.com/odoo/odoo/wiki/Contributing)
 
-TL;DR
+# Fresh start with module upgrade (clears cache first)
+./run_odoo.sh --fresh -u smart_ecommerce_extension
 
-* If you [make a pull request](https://github.com/odoo/odoo/wiki/Contributing#making-pull-requests),
-  do not create an issue! Use the PR description for that
-* Issues are handled with a much lower priority than pull requests
-* Use this [template](https://github.com/odoo/odoo/wiki/Contributing#reporting-issues)
-  when reporting issues. Please search for duplicates first!
-* Pull requests must be made against the [correct version](https://github.com/odoo/odoo/wiki/Contributing#against-which-version-should-i-submit-a-patch)
-* There are restrictions on the kind of [changes allowed in stable series](https://github.com/odoo/odoo/wiki/Contributing#what-does-stable-mean)
+# Upgrade multiple modules
+./run_odoo.sh -u smart_ecommerce_extension,smart_marketplace_core
+
+# Complete fresh database with demo data
+./run_odoo.sh --init-demo
+
+# Just clear cache without starting
+./run_odoo.sh --clear-cache
+
+
+# List all custom-addons modules
+./run_odoo.sh --list-custom
+
+# Install ALL custom-addons modules
+./run_odoo.sh --install-custom
+
+# Upgrade ALL custom-addons modules  
+./run_odoo.sh --upgrade-custom
+
+# Clear cache + upgrade all custom modules
+./run_odoo.sh --fresh --upgrade-custom
+
+
+./run_odoo.sh --fresh -u smart_ecommerce_extension
+
+
+
+

@@ -2,6 +2,7 @@
 # Part of SMART eCommerce Extension. See LICENSE file for full copyright and licensing details.
 
 from odoo import api, fields, models, _
+from odoo.exceptions import UserError, ValidationError
 from datetime import timedelta
 
 
@@ -15,6 +16,19 @@ class ProductTemplate(models.Model):
         index=True,
         tracking=True,
         help='The marketplace seller who owns this product',
+    )
+    
+    # Seller KYC status - computed from seller for easy access (not stored to avoid migration issues)
+    seller_kyc_verified = fields.Boolean(
+        string='Seller KYC Verified',
+        related='seller_id.kyc_verified',
+        readonly=True,
+    )
+    seller_can_sell = fields.Boolean(
+        string='Seller Can Sell',
+        related='seller_id.can_do_commercial_actions',
+        readonly=True,
+        help='Indicates if the seller is approved and KYC verified',
     )
     
     # Brand and Model fields
@@ -95,6 +109,86 @@ class ProductTemplate(models.Model):
                 product.availability_status = 'low_stock'
             else:
                 product.availability_status = 'in_stock'
+
+    # ==========================================
+    # KYC ENFORCEMENT FOR PUBLISHING
+    # ==========================================
+
+    @api.constrains('is_published', 'seller_id')
+    def _check_seller_kyc_for_publishing(self):
+        """
+        Prevent publishing products if seller's KYC is not verified.
+        This is the core enforcement mechanism for KYC requirements.
+        """
+        for product in self:
+            if product.is_published and product.seller_id:
+                if not product.seller_id.can_do_commercial_actions:
+                    if product.seller_id.state != 'approved':
+                        raise ValidationError(_(
+                            'Cannot publish product "%(product)s".\n'
+                            'The seller account "%(seller)s" is not approved yet.\n'
+                            'Current status: %(status)s'
+                        ) % {
+                            'product': product.name,
+                            'seller': product.seller_id.company_name,
+                            'status': dict(product.seller_id._fields['state'].selection).get(
+                                product.seller_id.state, product.seller_id.state
+                            ),
+                        })
+                    else:
+                        raise ValidationError(_(
+                            'Cannot publish product "%(product)s".\n'
+                            'The seller "%(seller)s" must complete KYC verification first.\n'
+                            'Please upload KYC documents and wait for verification.'
+                        ) % {
+                            'product': product.name,
+                            'seller': product.seller_id.company_name,
+                        })
+
+    def write(self, vals):
+        """Override write to check KYC before publishing"""
+        # Check if trying to publish
+        if vals.get('is_published'):
+            for product in self:
+                if product.seller_id and not product.seller_id.can_do_commercial_actions:
+                    raise UserError(_(
+                        'Cannot publish product "%(product)s".\n'
+                        'The seller "%(seller)s" must be approved and KYC verified first.\n\n'
+                        '%(status_message)s'
+                    ) % {
+                        'product': product.name,
+                        'seller': product.seller_id.company_name,
+                        'status_message': product.seller_id.commercial_status_message or '',
+                    })
+        return super().write(vals)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Override create to prevent publishing products for non-verified sellers"""
+        for vals in vals_list:
+            if vals.get('is_published') and vals.get('seller_id'):
+                seller = self.env['marketplace.seller'].browse(vals['seller_id'])
+                if seller.exists() and not seller.can_do_commercial_actions:
+                    raise UserError(_(
+                        'Cannot create and publish product for seller "%(seller)s".\n'
+                        'The seller must be approved and KYC verified first.\n\n'
+                        '%(status_message)s'
+                    ) % {
+                        'seller': seller.company_name,
+                        'status_message': seller.commercial_status_message or '',
+                    })
+        return super().create(vals_list)
+
+    def action_publish(self):
+        """Action to publish product - checks KYC first"""
+        for product in self:
+            if product.seller_id:
+                product.seller_id.ensure_can_do_commercial_actions()
+        return self.write({'is_published': True})
+
+    def action_unpublish(self):
+        """Action to unpublish product"""
+        return self.write({'is_published': False})
 
     def get_availability_badge_class(self):
         """Return CSS class for availability badge"""
