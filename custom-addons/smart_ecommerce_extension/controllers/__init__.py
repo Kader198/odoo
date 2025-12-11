@@ -4,4 +4,5 @@
 from . import ecommerce_api
 from . import website_sale_ext
 from . import seller_portal
+from . import stores
 

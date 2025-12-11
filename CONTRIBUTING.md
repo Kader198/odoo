@@ -36,7 +36,7 @@ Contributing to Odoo
 ./run_odoo.sh --fresh --upgrade-custom
 
 
-./run_odoo.sh --fresh -u smart_ecommerce_extension
+./run_odoo.sh -u smart_ecommerce_extension
 
 
 

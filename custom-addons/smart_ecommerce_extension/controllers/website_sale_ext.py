@@ -19,6 +19,14 @@ class WebsiteSaleExtension(WebsiteSale):
             search, category, attrib_values, search_in_description
         )
         
+        # Seller/Store filter
+        seller_id = request.params.get('seller_id')
+        if seller_id:
+            try:
+                domain.append(('seller_id', '=', int(seller_id)))
+            except (ValueError, TypeError):
+                pass
+        
         # Brand filter
         brand = request.params.get('brand')
         if brand:
@@ -74,10 +82,31 @@ class WebsiteSaleExtension(WebsiteSale):
         """)
         price_range = request.env.cr.fetchone()
         
+        # Get active sellers for filter
+        Seller = request.env['marketplace.seller'].sudo()
+        active_sellers = Seller.search([
+            ('state', '=', 'approved'),
+            ('can_do_commercial_actions', '=', True),
+            ('active', '=', True),
+        ], order='company_name')
+        
+        # Get selected seller
+        selected_seller = None
+        seller_id = post.get('seller_id')
+        if seller_id:
+            try:
+                selected_seller = Seller.browse(int(seller_id))
+                if not selected_seller.exists() or not selected_seller.can_do_commercial_actions:
+                    selected_seller = None
+            except (ValueError, TypeError):
+                pass
+        
         # Add to template values
         response.qcontext.update({
             'brands': brands,
             'categories': categories,
+            'active_sellers': active_sellers,
+            'selected_seller': selected_seller,
             'selected_brand': post.get('brand'),
             'selected_availability': post.get('availability'),
             'price_range_min': price_range[0] or 0,

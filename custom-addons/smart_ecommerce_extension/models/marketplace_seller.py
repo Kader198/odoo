@@ -165,6 +165,13 @@ class MarketplaceSeller(models.Model):
     store_logo = fields.Binary(string='Store Logo', attachment=True)
     store_banner = fields.Binary(string='Store Banner', attachment=True)
     
+    # Website URL
+    website_url = fields.Char(
+        string='Website URL',
+        compute='_compute_website_url',
+        help='The full URL to access the store page',
+    )
+    
     active = fields.Boolean(default=True)
 
     _sql_constraints = [
@@ -636,6 +643,17 @@ class MarketplaceSeller(models.Model):
             'page': page,
             'per_page': per_page,
         }
+
+    @api.depends('company_name', 'state', 'can_do_commercial_actions')
+    def _compute_website_url(self):
+        """Compute the website URL for the store page"""
+        for seller in self:
+            if seller.id and seller.state == 'approved' and seller.can_do_commercial_actions:
+                base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+                slug = self.env['ir.http']._slug(seller)
+                seller.website_url = f'{base_url}/store/{slug}'
+            else:
+                seller.website_url = False
 
 
 class MarketplaceSellerRejectWizard(models.TransientModel):
