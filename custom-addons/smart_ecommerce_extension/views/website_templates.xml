@@ -212,41 +212,46 @@
     <!-- SHOP PAGE - FEATURED STORES SECTION -->
     <!-- ============================================================ -->
     
-    <!-- Featured Stores Horizontal Section -->
+    <!-- Featured Stores Horizontal Section - Enhanced UI/UX -->
     <template id="shop_featured_stores" inherit_id="website_sale.products" name="SMART Featured Stores Section">
         <xpath expr="//div[hasclass('o_wsale_products_main_row')]" position="before">
             <t t-if="active_sellers">
-                <!-- Featured Stores Section -->
-                <section class="smart-shop-stores py-4 mb-4" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 12px;">
+                <!-- Featured Stores Section with improved accessibility -->
+                <section class="smart-shop-stores py-4 mb-4" 
+                         role="region" 
+                         aria-label="Shop by Store"
+                         style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 16px;">
                     <div class="container-fluid px-4">
-                        <!-- Section Header -->
+                        <!-- Section Header with better semantics -->
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="fw-bold mb-0" style="color: #714B67;">
-                                <i class="fa fa-store me-2"/>Shop by Store
-                            </h5>
-                            <a href="/stores" class="btn btn-sm btn-outline-primary">
-                                View All Stores <i class="fa fa-arrow-right ms-1"/>
+                            <h2 class="h5 fw-bold mb-0" style="color: #714B67;">
+                                <i class="fa fa-store me-2" aria-hidden="true"/>Shop by Store
+                            </h2>
+                            <a href="/stores" class="btn btn-sm btn-outline-primary" aria-label="View all stores">
+                                View All <span class="d-none d-sm-inline">Stores</span> <i class="fa fa-arrow-right ms-1" aria-hidden="true"/>
                             </a>
                         </div>
                         
-                        <!-- Stores Horizontal Scroll -->
-                        <div class="smart-stores-scroll position-relative">
-                            <div class="d-flex gap-3 overflow-auto pb-2" style="scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;">
+                        <!-- Stores Horizontal Scroll with keyboard navigation -->
+                        <div class="smart-stores-scroll position-relative" role="list" aria-label="Available stores">
+                            <div class="d-flex gap-3 overflow-auto pb-2 smart-stores-container" 
+                                 style="scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scroll-behavior: smooth;">
                                 <!-- All Stores Card -->
                                 <a t-att-href="keep(seller_id='')" 
-                                   t-attf-class="smart-store-card flex-shrink-0 text-decoration-none #{'border-primary border-2' if not selected_seller else ''}"
-                                   style="scroll-snap-align: start; width: 140px;">
-                                    <div class="card h-100 border-0 shadow-sm text-center" 
-                                         style="transition: transform 0.2s, box-shadow 0.2s;"
-                                         onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 25px rgba(0,0,0,0.15)';" 
-                                         onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='';">
-                                        <div class="card-body p-3">
-                                            <div class="rounded-circle mx-auto mb-2 d-flex align-items-center justify-content-center"
-                                                 t-attf-style="width: 60px; height: 60px; background: #{not selected_seller and 'linear-gradient(135deg, #714B67 0%, #9B6A8F 100%)' or '#f0f0f0'};">
-                                                <i t-attf-class="fa fa-th-large fa-lg #{not selected_seller and 'text-white' or 'text-muted'}"/>
+                                   role="listitem"
+                                   aria-label="Show products from all stores"
+                                   t-attf-class="smart-store-card flex-shrink-0 text-decoration-none #{'active-store' if not selected_seller else ''}"
+                                   style="scroll-snap-align: start; width: 130px;">
+                                    <div t-attf-class="card h-100 border-0 shadow-sm text-center smart-store-card-inner #{'border-primary border-2' if not selected_seller else ''}">
+                                        <div class="card-body p-2 p-sm-3">
+                                            <div class="rounded-circle mx-auto mb-2 d-flex align-items-center justify-content-center smart-store-icon"
+                                                 t-attf-style="width: 56px; height: 56px; background: #{not selected_seller and 'linear-gradient(135deg, #714B67 0%, #9B6A8F 100%)' or '#f0f0f0'};">
+                                                <i t-attf-class="fa fa-th-large #{not selected_seller and 'text-white' or 'text-muted'}" aria-hidden="true"/>
                                             </div>
-                                            <h6 class="card-title mb-1 small fw-bold text-truncate">All Stores</h6>
-                                            <span class="badge bg-secondary small"><t t-esc="len(active_sellers)"/> stores</span>
+                                            <h3 class="card-title mb-1 small fw-bold text-truncate h6">All Stores</h3>
+                                            <span class="badge bg-secondary small" aria-label="Store count">
+                                                <t t-esc="len(active_sellers)"/> stores
+                                            </span>
                                         </div>
                                     </div>
                                 </a>
@@ -254,69 +259,93 @@
                                 <!-- Individual Store Cards -->
                                 <t t-foreach="active_sellers[:12]" t-as="store">
                                     <a t-att-href="keep(seller_id=store.id)" 
-                                       t-attf-class="smart-store-card flex-shrink-0 text-decoration-none #{'border-primary border-2' if selected_seller and selected_seller.id == store.id else ''}"
-                                       style="scroll-snap-align: start; width: 140px;">
-                                        <div class="card h-100 border-0 shadow-sm text-center"
-                                             t-att-style="'border: 2px solid #714B67 !important;' if selected_seller and selected_seller.id == store.id else ''"
-                                             style="transition: transform 0.2s, box-shadow 0.2s;"
-                                             onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 25px rgba(0,0,0,0.15)';" 
-                                             onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='';">
-                                            <div class="card-body p-3">
+                                       role="listitem"
+                                       t-att-aria-label="'Shop from ' + store.company_name"
+                                       t-att-aria-current="'true' if selected_seller and selected_seller.id == store.id else 'false'"
+                                       t-attf-class="smart-store-card flex-shrink-0 text-decoration-none #{'active-store' if selected_seller and selected_seller.id == store.id else ''}"
+                                       style="scroll-snap-align: start; width: 130px;">
+                                        <div t-attf-class="card h-100 border-0 shadow-sm text-center smart-store-card-inner #{'border-primary border-2' if selected_seller and selected_seller.id == store.id else ''}">
+                                            <div class="card-body p-2 p-sm-3">
                                                 <t t-if="store.store_logo">
                                                     <img t-att-src="'/web/image/marketplace.seller/%s/store_logo' % store.id" 
-                                                         t-att-alt="store.company_name"
-                                                         class="rounded-circle mx-auto mb-2" 
-                                                         style="width: 60px; height: 60px; object-fit: cover; border: 2px solid #eee;"/>
+                                                         t-att-alt="'%s store logo' % store.company_name"
+                                                         class="rounded-circle mx-auto mb-2 smart-store-logo" 
+                                                         style="width: 56px; height: 56px; object-fit: cover; border: 2px solid #eee;"
+                                                         loading="lazy"/>
                                                 </t>
                                                 <t t-else="">
-                                                    <div class="rounded-circle mx-auto mb-2 d-flex align-items-center justify-content-center bg-light"
-                                                         style="width: 60px; height: 60px;">
+                                                    <div class="rounded-circle mx-auto mb-2 d-flex align-items-center justify-content-center bg-light smart-store-icon"
+                                                         style="width: 56px; height: 56px;" aria-hidden="true">
                                                         <i class="fa fa-store text-muted"/>
                                                     </div>
                                                 </t>
-                                                <h6 class="card-title mb-1 small fw-bold text-truncate" t-att-title="store.company_name">
+                                                <h3 class="card-title mb-1 small fw-bold text-truncate h6" t-att-title="store.company_name">
                                                     <t t-esc="store.company_name"/>
-                                                </h6>
+                                                </h3>
                                                 <span class="badge bg-primary small">
-                                                    <t t-esc="store.product_count"/> items
+                                                    <t t-esc="store.product_count"/> <span class="visually-hidden">products</span>
                                                 </span>
+                                                <t t-if="store.rating > 0">
+                                                    <span class="badge bg-warning text-dark small ms-1" t-att-aria-label="'Rating: ' + str(store.rating)">
+                                                        <i class="fa fa-star" aria-hidden="true"/> <t t-esc="'%.1f' % store.rating"/>
+                                                    </span>
+                                                </t>
                                             </div>
                                         </div>
                                     </a>
                                 </t>
                             </div>
+                            
+                            <!-- Scroll Indicators for better UX -->
+                            <div class="smart-scroll-indicators d-none d-md-flex justify-content-center mt-2 gap-1" aria-hidden="true">
+                                <span class="smart-scroll-dot active"></span>
+                                <span class="smart-scroll-dot"></span>
+                                <span class="smart-scroll-dot"></span>
+                            </div>
                         </div>
                         
-                        <!-- Selected Store Info Banner -->
-                        <div t-if="selected_seller" class="alert alert-info d-flex align-items-center justify-content-between mt-3 mb-0" role="alert">
-                            <div class="d-flex align-items-center">
+                        <!-- Selected Store Info Banner - Enhanced -->
+                        <div t-if="selected_seller" 
+                             class="smart-selected-store-banner alert alert-info d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between mt-3 mb-0 border-0" 
+                             role="status"
+                             aria-live="polite"
+                             style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border-radius: 12px;">
+                            <div class="d-flex align-items-center mb-2 mb-md-0">
                                 <t t-if="selected_seller.store_logo">
                                     <img t-att-src="'/web/image/marketplace.seller/%s/store_logo' % selected_seller.id" 
-                                         class="rounded-circle me-3" 
-                                         style="width: 40px; height: 40px; object-fit: cover;"/>
+                                         t-att-alt="selected_seller.company_name"
+                                         class="rounded-circle me-3 shadow-sm" 
+                                         style="width: 48px; height: 48px; object-fit: cover; border: 2px solid white;"/>
                                 </t>
                                 <t t-else="">
-                                    <div class="rounded-circle me-3 d-flex align-items-center justify-content-center bg-white"
-                                         style="width: 40px; height: 40px;">
-                                        <i class="fa fa-store" style="color: #714B67;"/>
+                                    <div class="rounded-circle me-3 d-flex align-items-center justify-content-center bg-white shadow-sm"
+                                         style="width: 48px; height: 48px;" aria-hidden="true">
+                                        <i class="fa fa-store fa-lg" style="color: #714B67;"/>
                                     </div>
                                 </t>
                                 <div>
-                                    <strong>Browsing: <t t-esc="selected_seller.company_name"/></strong>
+                                    <strong class="d-block">
+                                        <i class="fa fa-filter me-1 text-primary" aria-hidden="true"/>
+                                        Showing: <t t-esc="selected_seller.company_name"/>
+                                    </strong>
                                     <div class="small text-muted">
-                                        <t t-esc="selected_seller.product_count"/> products available
+                                        <span class="me-2"><i class="fa fa-cubes me-1" aria-hidden="true"/><t t-esc="selected_seller.product_count"/> products</span>
                                         <t t-if="selected_seller.rating > 0">
-                                            • <i class="fa fa-star text-warning"/> <t t-esc="'%.1f' % selected_seller.rating"/>
+                                            <span><i class="fa fa-star text-warning me-1" aria-hidden="true"/><t t-esc="'%.1f' % selected_seller.rating"/> rating</span>
                                         </t>
                                     </div>
                                 </div>
                             </div>
-                            <div class="d-flex gap-2">
-                                <a t-att-href="'/store/%s' % slug(selected_seller)" class="btn btn-sm btn-primary">
-                                    <i class="fa fa-external-link me-1"/>Visit Store
+                            <div class="d-flex gap-2 flex-wrap">
+                                <a t-att-href="'/store/%s' % slug(selected_seller)" 
+                                   class="btn btn-sm btn-primary"
+                                   aria-label="Visit store page">
+                                    <i class="fa fa-external-link me-1" aria-hidden="true"/>Visit Store
                                 </a>
-                                <a t-att-href="keep(seller_id='')" class="btn btn-sm btn-outline-secondary">
-                                    <i class="fa fa-times me-1"/>Clear Filter
+                                <a t-att-href="keep(seller_id='')" 
+                                   class="btn btn-sm btn-outline-secondary"
+                                   aria-label="Clear store filter and show all products">
+                                    <i class="fa fa-times me-1" aria-hidden="true"/>Show All
                                 </a>
                             </div>
                         </div>
@@ -1177,5 +1206,210 @@
                 </div>
             </div>
         </t>
+    </template>
+    
+    <!-- ============================================================ -->
+    <!-- CART - GROUPED BY SELLER VIEW -->
+    <!-- ============================================================ -->
+    
+    <!-- Multi-seller cart notice banner -->
+    <template id="cart_lines_grouped_by_seller" inherit_id="website_sale.cart_lines" name="Cart Lines Grouped by Seller">
+        <xpath expr="//div[@id='cart_products']" position="before">
+            <!-- Multi-seller notice banner -->
+            <t t-set="cart_sellers" t-value="website_sale_order.order_line.mapped('product_id.product_tmpl_id.seller_id').filtered(lambda s: s.id) if website_sale_order else []"/>
+            <div t-if="cart_sellers and len(cart_sellers) > 1" class="alert border-0 mb-4 smart-multi-seller-notice" role="alert"
+                 style="background: linear-gradient(135deg, #e8f4fd 0%, #d0e8f8 100%); border-radius: 12px;">
+                <div class="d-flex align-items-start">
+                    <i class="fa fa-info-circle fa-lg me-3 mt-1 text-primary" aria-hidden="true"/>
+                    <div>
+                        <strong class="d-block mb-1">
+                            <i class="fa fa-store me-1" aria-hidden="true"/>Multiple Stores in Your Cart
+                        </strong>
+                        <p class="mb-2 small">
+                            Your cart contains items from <strong><t t-esc="len(cart_sellers)"/> different stores</strong>. 
+                            Each store will process and ship their items separately for faster delivery.
+                        </p>
+                        <div class="d-flex flex-wrap gap-2">
+                            <t t-foreach="cart_sellers" t-as="cart_seller">
+                                <span class="badge bg-white text-dark border shadow-sm">
+                                    <t t-if="cart_seller.store_logo">
+                                        <img t-att-src="'/web/image/marketplace.seller/%s/store_logo' % cart_seller.id" 
+                                             class="rounded-circle me-1" style="width: 16px; height: 16px; object-fit: cover;"
+                                             t-att-alt="cart_seller.company_name"/>
+                                    </t>
+                                    <t t-else="">
+                                        <i class="fa fa-store me-1 text-muted" aria-hidden="true"/>
+                                    </t>
+                                    <t t-esc="cart_seller.company_name"/>
+                                </span>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </xpath>
+    </template>
+    
+    <!-- Cart seller group header component -->
+    <template id="cart_seller_group_header" name="Cart Seller Group Header">
+        <div class="smart-cart-seller-group mb-3 mt-4 first:mt-0">
+            <div class="d-flex align-items-center justify-content-between p-3 rounded-top" 
+                 style="background: linear-gradient(135deg, #714B67 0%, #9B6A8F 100%);">
+                <div class="d-flex align-items-center text-white">
+                    <t t-if="seller.store_logo">
+                        <img t-att-src="'/web/image/marketplace.seller/%s/store_logo' % seller.id" 
+                             t-att-alt="seller.company_name"
+                             class="rounded-circle me-3 border border-2 border-white" 
+                             style="width: 40px; height: 40px; object-fit: cover;"/>
+                    </t>
+                    <t t-else="">
+                        <div class="rounded-circle me-3 d-flex align-items-center justify-content-center bg-white"
+                             style="width: 40px; height: 40px;">
+                            <i class="fa fa-store" style="color: #714B67;"/>
+                        </div>
+                    </t>
+                    <div>
+                        <h6 class="mb-0 fw-bold"><t t-esc="seller.company_name"/></h6>
+                        <small class="opacity-75">
+                            <t t-esc="len(seller_lines)"/> item<t t-if="len(seller_lines) != 1">s</t>
+                        </small>
+                    </div>
+                </div>
+                <a t-att-href="'/store/%s' % slug(seller)" class="btn btn-sm btn-light" target="_blank">
+                    <i class="fa fa-external-link me-1"/>View Store
+                </a>
+            </div>
+        </div>
+    </template>
+    
+    <!-- ============================================================ -->
+    <!-- CART SUMMARY - SHOW BREAKDOWN BY SELLER -->
+    <!-- ============================================================ -->
+    
+    <template id="cart_summary_seller_breakdown" inherit_id="website_sale.total" name="Cart Summary Seller Breakdown">
+        <xpath expr="//tr[@id='order_total']" position="before">
+            <!-- Seller breakdown section -->
+            <t t-set="cart_sellers" t-value="website_sale_order.order_line.mapped('product_id.product_tmpl_id.seller_id').filtered(lambda s: s.id) if website_sale_order else []"/>
+            <tr t-if="cart_sellers and len(cart_sellers) > 1" class="smart-seller-breakdown-row">
+                <td colspan="3" class="border-0 ps-0 pt-0 pb-3">
+                    <div class="small text-muted mb-2">
+                        <i class="fa fa-store me-1" aria-hidden="true"/>Breakdown by Store:
+                    </div>
+                    <t t-foreach="cart_sellers" t-as="breakdown_seller">
+                        <t t-set="seller_lines" t-value="website_sale_order.order_line.filtered(lambda l: l.product_id.product_tmpl_id.seller_id.id == breakdown_seller.id)"/>
+                        <t t-set="seller_subtotal" t-value="sum(seller_lines.mapped('price_subtotal'))"/>
+                        <div class="d-flex justify-content-between align-items-center py-1 px-2 rounded" style="background: rgba(113, 75, 103, 0.05);">
+                            <span class="small">
+                                <t t-if="breakdown_seller.store_logo">
+                                    <img t-att-src="'/web/image/marketplace.seller/%s/store_logo' % breakdown_seller.id" 
+                                         class="rounded-circle me-1" style="width: 16px; height: 16px; object-fit: cover;"
+                                         t-att-alt="breakdown_seller.company_name"/>
+                                </t>
+                                <t t-else="">
+                                    <i class="fa fa-store me-1 text-muted" aria-hidden="true"/>
+                                </t>
+                                <t t-esc="breakdown_seller.company_name"/>
+                                <span class="text-muted">(<t t-esc="len(seller_lines)"/>)</span>
+                            </span>
+                            <span class="small fw-bold" style="color: #714B67;">
+                                <t t-esc="seller_subtotal" t-options="{'widget': 'monetary', 'display_currency': website_sale_order.currency_id}"/>
+                            </span>
+                        </div>
+                    </t>
+                </td>
+            </tr>
+        </xpath>
+    </template>
+    
+    <!-- ============================================================ -->
+    <!-- CHECKOUT - MULTI-SELLER ORDER INFO -->
+    <!-- ============================================================ -->
+    
+    <template id="checkout_multi_seller_info" inherit_id="website_sale.checkout" name="Checkout Multi-Seller Info">
+        <xpath expr="//div[@id='shop_checkout']" position="after">
+            <t t-set="checkout_sellers" t-value="website_sale_order.order_line.mapped('product_id.product_tmpl_id.seller_id').filtered(lambda s: s.id)"/>
+            
+            <!-- Multi-seller order notice -->
+            <div t-if="len(checkout_sellers) > 1" class="smart-multi-seller-checkout mt-4 mb-4">
+                <div class="card border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+                    <div class="card-header text-white py-3" style="background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);">
+                        <h5 class="mb-0">
+                            <i class="fa fa-info-circle me-2"/>Order Summary by Store
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3">
+                            Your order will be split into <strong><t t-esc="len(checkout_sellers)"/> separate orders</strong>, 
+                            one for each store. This ensures faster processing and delivery from each seller.
+                        </p>
+                        
+                        <!-- Seller order previews -->
+                        <div class="row g-3">
+                            <t t-foreach="checkout_sellers" t-as="checkout_seller">
+                                <t t-set="seller_order_lines" t-value="website_sale_order.order_line.filtered(lambda l: l.product_id.product_tmpl_id.seller_id.id == checkout_seller.id)"/>
+                                <t t-set="seller_order_subtotal" t-value="sum(seller_order_lines.mapped('price_subtotal'))"/>
+                                
+                                <div class="col-md-6">
+                                    <div class="card h-100 border" style="border-radius: 8px;">
+                                        <div class="card-body p-3">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <t t-if="checkout_seller.store_logo">
+                                                    <img t-att-src="'/web/image/marketplace.seller/%s/store_logo' % checkout_seller.id" 
+                                                         t-att-alt="checkout_seller.company_name"
+                                                         class="rounded-circle me-2" 
+                                                         style="width: 32px; height: 32px; object-fit: cover; border: 1px solid #eee;"/>
+                                                </t>
+                                                <t t-else="">
+                                                    <div class="rounded-circle me-2 d-flex align-items-center justify-content-center bg-light"
+                                                         style="width: 32px; height: 32px;">
+                                                        <i class="fa fa-store text-muted small"/>
+                                                    </div>
+                                                </t>
+                                                <div>
+                                                    <strong class="d-block small"><t t-esc="checkout_seller.company_name"/></strong>
+                                                    <span class="text-muted small">
+                                                        <t t-esc="len(seller_order_lines)"/> item<t t-if="len(seller_order_lines) != 1">s</t>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Products list -->
+                                            <div class="border-top pt-2 mt-2">
+                                                <t t-foreach="seller_order_lines[:3]" t-as="preview_line">
+                                                    <div class="d-flex align-items-center small py-1">
+                                                        <img t-att-src="'/web/image/product.product/%s/image_64' % preview_line.product_id.id" 
+                                                             class="rounded me-2" style="width: 24px; height: 24px; object-fit: cover;"/>
+                                                        <span class="text-truncate flex-grow-1" style="max-width: 150px;">
+                                                            <t t-esc="preview_line.name_short"/>
+                                                        </span>
+                                                        <span class="text-muted ms-1">×<t t-esc="int(preview_line.product_uom_qty)"/></span>
+                                                    </div>
+                                                </t>
+                                                <div t-if="len(seller_order_lines) > 3" class="small text-muted mt-1">
+                                                    + <t t-esc="len(seller_order_lines) - 3"/> more item<t t-if="len(seller_order_lines) - 3 != 1">s</t>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Subtotal -->
+                                            <div class="border-top pt-2 mt-2 d-flex justify-content-between">
+                                                <span class="small text-muted">Subtotal:</span>
+                                                <span class="fw-bold text-primary">
+                                                    <t t-esc="seller_order_subtotal" t-options="{'widget': 'monetary', 'display_currency': website_sale_order.currency_id}"/>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </t>
+                        </div>
+                        
+                        <div class="alert alert-light mt-3 mb-0 small" role="alert">
+                            <i class="fa fa-truck me-2 text-muted"/>
+                            Each store will handle shipping separately. Delivery times may vary.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </xpath>
     </template>
 </odoo>

@@ -9,6 +9,14 @@ from datetime import timedelta
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
+    # Primary seller for this order (after splitting)
+    seller_id = fields.Many2one(
+        'marketplace.seller',
+        string='Seller',
+        help='Primary seller for this order (set after order splitting)',
+        index=True,
+    )
+    
     # Delivery zone
     delivery_zone_id = fields.Many2one(
         'delivery.zone',
@@ -16,6 +24,24 @@ class SaleOrder(models.Model):
         compute='_compute_delivery_zone',
         store=True,
         readonly=False,
+    )
+    
+    # Flag to track if order was split from another
+    is_split_order = fields.Boolean(
+        string='Is Split Order',
+        default=False,
+        help='Indicates if this order was created by splitting a multi-seller cart',
+    )
+    parent_order_id = fields.Many2one(
+        'sale.order',
+        string='Parent Order',
+        help='Original order this was split from',
+    )
+    child_order_ids = fields.One2many(
+        'sale.order',
+        'parent_order_id',
+        string='Split Orders',
+        help='Orders created by splitting this order',
     )
     
     # ==========================================
@@ -270,12 +296,6 @@ class SaleOrder(models.Model):
         self._ensure_zone_delivery_line()
         return super()._prepare_invoice()
 
-    def action_confirm(self):
-        """Override to ensure delivery line exists before confirmation"""
-        # Ensure delivery line is created before confirming
-        self._ensure_zone_delivery_line()
-        return super().action_confirm()
-
     def get_delivery_info(self):
         """Get delivery information for API/template use"""
         self.ensure_one()
@@ -388,6 +408,132 @@ class SaleOrder(models.Model):
                 'subtotal': sum(lines.mapped('price_subtotal')),
             })
         return summary
+
+
+    # ==========================================
+    # MULTI-SELLER ORDER SPLITTING
+    # ==========================================
+    
+    def _get_sellers_from_cart(self):
+        """Get unique sellers from order lines"""
+        self.ensure_one()
+        sellers = self.env['marketplace.seller']
+        for line in self.order_line.filtered(lambda l: not l.is_delivery):
+            seller = line.product_id.product_tmpl_id.seller_id
+            if seller and seller.id and seller not in sellers:
+                sellers |= seller
+        return sellers
+    
+    def _needs_splitting_by_seller(self):
+        """Check if order has products from multiple sellers"""
+        self.ensure_one()
+        sellers = self._get_sellers_from_cart()
+        return len(sellers) > 1
+    
+    def _split_order_by_seller(self):
+        """
+        Split the current order into multiple orders, one per seller.
+        Returns a list of the new orders (including modified self for first seller).
+        """
+        self.ensure_one()
+        
+        if not self._needs_splitting_by_seller():
+            return [self]
+        
+        sellers = self._get_sellers_from_cart()
+        if len(sellers) <= 1:
+            return [self]
+        
+        orders = []
+        first_seller = True
+        
+        for seller in sellers:
+            seller_lines = self.order_line.filtered(
+                lambda l: not l.is_delivery and l.product_id.product_tmpl_id.seller_id.id == seller.id
+            )
+            
+            if not seller_lines:
+                continue
+            
+            if first_seller:
+                # Keep first seller's lines in original order
+                # Remove lines from other sellers
+                other_lines = self.order_line.filtered(
+                    lambda l: not l.is_delivery and l.product_id.product_tmpl_id.seller_id.id != seller.id
+                )
+                # Also remove any existing delivery lines (will be recalculated)
+                delivery_lines = self.order_line.filtered('is_delivery')
+                (other_lines | delivery_lines).unlink()
+                
+                # Update the order's seller reference
+                self.write({'seller_id': seller.id})
+                
+                # Recalculate delivery for this order
+                self._compute_delivery_info()
+                self._ensure_zone_delivery_line()
+                
+                orders.append(self)
+                first_seller = False
+            else:
+                # Create new order for this seller
+                new_order_vals = self._prepare_split_order_vals(seller)
+                new_order = self.create(new_order_vals)
+                
+                # Move lines to new order
+                seller_lines.write({'order_id': new_order.id})
+                
+                # Copy delivery zone and recalculate
+                new_order.write({'delivery_zone_id': self.delivery_zone_id.id})
+                new_order._compute_delivery_info()
+                new_order._ensure_zone_delivery_line()
+                
+                # Recompute totals
+                new_order._compute_amounts()
+                
+                orders.append(new_order)
+        
+        # Recompute totals for original order
+        self._compute_amounts()
+        
+        return orders
+    
+    def _prepare_split_order_vals(self, seller):
+        """Prepare values for a new split order"""
+        self.ensure_one()
+        return {
+            'partner_id': self.partner_id.id,
+            'partner_invoice_id': self.partner_invoice_id.id,
+            'partner_shipping_id': self.partner_shipping_id.id,
+            'pricelist_id': self.pricelist_id.id,
+            'currency_id': self.currency_id.id,
+            'payment_term_id': self.payment_term_id.id if self.payment_term_id else False,
+            'fiscal_position_id': self.fiscal_position_id.id if self.fiscal_position_id else False,
+            'company_id': self.company_id.id,
+            'warehouse_id': self.warehouse_id.id if self.warehouse_id else False,
+            'website_id': self.website_id.id if self.website_id else False,
+            'delivery_zone_id': self.delivery_zone_id.id if self.delivery_zone_id else False,
+            'seller_id': seller.id,
+            'is_split_order': True,
+            'parent_order_id': self.id,
+            'origin': self.name,  # Reference to original order
+            'note': _('Split from order %s - Seller: %s') % (self.name, seller.company_name),
+        }
+    
+    def action_confirm(self):
+        """Override to split multi-seller orders before confirmation"""
+        orders_to_confirm = self.env['sale.order']
+        
+        for order in self:
+            if order.website_id and order._needs_splitting_by_seller():
+                # Split the order by seller
+                split_orders = order._split_order_by_seller()
+                orders_to_confirm |= self.browse([o.id for o in split_orders])
+            else:
+                # Ensure delivery line exists
+                order._ensure_zone_delivery_line()
+                orders_to_confirm |= order
+        
+        return super(SaleOrder, orders_to_confirm).action_confirm()
 
 
 class SaleOrderLine(models.Model):
