@@ -57,6 +57,50 @@
             <field name="perm_unlink" eval="False"/>
         </record>
         
+        <!-- Public can read approved sellers only -->
+        <record id="marketplace_seller_public_read" model="ir.rule">
+            <field name="name">Seller: Public Read Approved</field>
+            <field name="model_id" ref="smart_marketplace_core.model_marketplace_seller"/>
+            <field name="domain_force">[('state', '=', 'approved'), ('active', '=', True)]</field>
+            <field name="groups" eval="[(4, ref('base.group_public'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+        
+        <!-- ============================================================ -->
+        <!-- KYC DOCUMENT RULES -->
+        <!-- ============================================================ -->
+        
+        <!-- Portal sellers can only access their own KYC documents -->
+        <record id="kyc_document_own_record" model="ir.rule">
+            <field name="name">KYC Document: Own Records Only (Portal)</field>
+            <field name="model_id" ref="model_marketplace_seller_kyc_document"/>
+            <field name="domain_force">[('seller_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+        
+        <!-- ============================================================ -->
+        <!-- SELLER COMMISSION RULES -->
+        <!-- ============================================================ -->
+        
+        <!-- Portal sellers can only read their own commissions -->
+        <record id="seller_commission_own_record" model="ir.rule">
+            <field name="name">Commission: Own Records Only (Portal)</field>
+            <field name="model_id" ref="model_seller_commission"/>
+            <field name="domain_force">[('seller_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+        
         <!-- 
         ============================================================
         KYC ENFORCEMENT NOTES

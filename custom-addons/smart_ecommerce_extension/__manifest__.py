@@ -75,6 +75,7 @@ Features:
         'data/delivery_zone_data.xml',
         'data/analytics_cron.xml',
         'data/cart_abandonment_sequence.xml',
+        'data/commission_sequence.xml',
         'data/kyc_document_types.xml',
         'data/email_templates.xml',
         
@@ -85,6 +86,7 @@ Features:
         'views/analytics_views.xml',
         'views/marketplace_seller_views.xml',
         'views/seller_admin_views.xml',
+        'views/seller_commission_views.xml',
         'views/menus.xml',
         
         # Website Templates

@@ -120,12 +120,50 @@
         </field>
     </record>
     
-    <menuitem 
+    <menuitem
         id="menu_smart_suspended_sellers"
         name="Suspended Sellers"
         parent="menu_smart_sellers"
         action="action_marketplace_sellers_suspended"
         sequence="30"/>
+
+    <!-- ============================================================ -->
+    <!-- COMMISSIONS MENU -->
+    <!-- ============================================================ -->
+
+    <menuitem
+        id="menu_smart_commissions"
+        name="Commissions"
+        parent="menu_smart_ecommerce_root"
+        sequence="8"/>
+
+    <menuitem
+        id="menu_smart_commissions_all"
+        name="All Commissions"
+        parent="menu_smart_commissions"
+        action="action_seller_commissions"
+        sequence="10"/>
+
+    <menuitem
+        id="menu_smart_commissions_pending"
+        name="Pending Commissions"
+        parent="menu_smart_commissions"
+        action="action_seller_commissions_pending"
+        sequence="20"/>
+
+    <menuitem
+        id="menu_smart_commissions_ready"
+        name="Ready to Pay"
+        parent="menu_smart_commissions"
+        action="action_seller_commissions_ready_to_pay"
+        sequence="30"/>
+
+    <menuitem
+        id="menu_smart_payouts"
+        name="Payouts"
+        parent="menu_smart_commissions"
+        action="action_seller_commission_payouts"
+        sequence="40"/>
     
     <!-- ============================================================ -->
     <!-- CATEGORIES SECTION -->

@@ -355,3 +355,229 @@ class SellerPortal(CustomerPortal):
             _logger.error(f"Seller submit error: {str(e)}", exc_info=True)
             return request.redirect('/my/seller/dashboard?error=' + str(e))
 
+    # ==========================================
+    # SELLER DOCUMENTS MANAGEMENT
+    # ==========================================
+
+    @http.route('/my/seller/documents', type='http', auth='user', website=True)
+    def seller_documents(self, **kw):
+        """Manage seller KYC documents"""
+        seller = self._get_current_seller()
+        
+        if not seller:
+            return request.redirect('/my/seller/register')
+        
+        document_types = request.env['marketplace.seller.kyc.document.type'].sudo().search([
+            ('active', '=', True)
+        ], order='sequence')
+        
+        # Get uploaded documents mapped by type
+        uploaded_docs = {}
+        for doc in seller.kyc_document_ids:
+            uploaded_docs[doc.document_type_id.id] = doc
+        
+        values = {
+            'page_name': 'seller_documents',
+            'seller': seller,
+            'document_types': document_types,
+            'uploaded_docs': uploaded_docs,
+            'success': kw.get('success'),
+            'error': kw.get('error'),
+        }
+        
+        return request.render('smart_ecommerce_extension.seller_documents', values)
+
+    @http.route('/my/seller/documents/upload', type='http', auth='user', website=True, methods=['POST'])
+    def seller_documents_upload(self, **kw):
+        """Upload a KYC document"""
+        import base64
+        
+        seller = self._get_current_seller()
+        
+        if not seller:
+            return request.redirect('/my/seller/register')
+        
+        try:
+            doc_type_id = int(kw.get('document_type_id', 0))
+            file_obj = kw.get('document_file')
+            
+            if not doc_type_id or not file_obj:
+                return request.redirect('/my/seller/documents?error=missing_data')
+            
+            # Check if document already exists for this type
+            existing_doc = seller.kyc_document_ids.filtered(
+                lambda d: d.document_type_id.id == doc_type_id
+            )
+            
+            doc_vals = {
+                'seller_id': seller.id,
+                'document_type_id': doc_type_id,
+                'file': base64.b64encode(file_obj.read()),
+                'filename': file_obj.filename if hasattr(file_obj, 'filename') else 'document',
+                'state': 'pending',
+            }
+            
+            if existing_doc:
+                existing_doc.sudo().write(doc_vals)
+            else:
+                request.env['marketplace.seller.kyc.document'].sudo().create(doc_vals)
+            
+            seller.message_post(body=_('Document uploaded: %s') % request.env['marketplace.seller.kyc.document.type'].browse(doc_type_id).name)
+            
+            return request.redirect('/my/seller/documents?success=uploaded')
+            
+        except Exception as e:
+            _logger.error(f"Document upload error: {str(e)}", exc_info=True)
+            return request.redirect('/my/seller/documents?error=upload_failed')
+
+    # ==========================================
+    # SELLER STORE MANAGEMENT
+    # ==========================================
+
+    @http.route('/my/seller/store', type='http', auth='user', website=True)
+    def seller_store_settings(self, **kw):
+        """Manage store settings"""
+        seller = self._get_current_seller()
+        
+        if not seller:
+            return request.redirect('/my/seller/register')
+        
+        values = {
+            'page_name': 'seller_store',
+            'seller': seller,
+            'success': kw.get('success'),
+            'error': kw.get('error'),
+        }
+        
+        return request.render('smart_ecommerce_extension.seller_store_settings', values)
+
+    @http.route('/my/seller/store/update', type='http', auth='user', website=True, methods=['POST'])
+    def seller_store_update(self, **kw):
+        """Update store settings"""
+        import base64
+        
+        seller = self._get_current_seller()
+        
+        if not seller:
+            return request.redirect('/my/seller/register')
+        
+        try:
+            vals = {}
+            
+            # Text fields
+            if kw.get('store_description') is not None:
+                vals['store_description'] = kw.get('store_description')
+            
+            # Handle logo upload
+            if kw.get('store_logo'):
+                file_obj = kw.get('store_logo')
+                if hasattr(file_obj, 'read'):
+                    vals['store_logo'] = base64.b64encode(file_obj.read())
+            
+            # Handle banner upload
+            if kw.get('store_banner'):
+                file_obj = kw.get('store_banner')
+                if hasattr(file_obj, 'read'):
+                    vals['store_banner'] = base64.b64encode(file_obj.read())
+            
+            if vals:
+                seller.sudo().write(vals)
+            
+            return request.redirect('/my/seller/store?success=updated')
+            
+        except Exception as e:
+            _logger.error(f"Store update error: {str(e)}", exc_info=True)
+            return request.redirect('/my/seller/store?error=update_failed')
+
+    # ==========================================
+    # SELLER PRODUCTS MANAGEMENT
+    # ==========================================
+
+    @http.route(['/my/seller/products', '/my/seller/products/page/<int:page>'],
+                type='http', auth='user', website=True)
+    def seller_products(self, page=1, **kw):
+        """Seller products list"""
+        seller = self._get_current_seller()
+        
+        if not seller:
+            return request.redirect('/my/seller/register')
+        
+        ProductTemplate = request.env['product.template'].sudo()
+        domain = [('seller_id', '=', seller.id)]
+        
+        # Pager
+        product_count = ProductTemplate.search_count(domain)
+        pager = portal_pager(
+            url='/my/seller/products',
+            total=product_count,
+            page=page,
+            step=20
+        )
+        
+        products = ProductTemplate.search(
+            domain,
+            order='create_date desc',
+            limit=20,
+            offset=pager['offset']
+        )
+        
+        values = {
+            'page_name': 'seller_products',
+            'seller': seller,
+            'products': products,
+            'pager': pager,
+            'product_count': product_count,
+        }
+        
+        return request.render('smart_ecommerce_extension.seller_products', values)
+
+    # ==========================================
+    # SELLER COMMISSIONS VIEW
+    # ==========================================
+
+    @http.route(['/my/seller/commissions', '/my/seller/commissions/page/<int:page>'],
+                type='http', auth='user', website=True)
+    def seller_commissions(self, page=1, **kw):
+        """View seller commissions"""
+        seller = self._get_current_seller()
+        
+        if not seller:
+            return request.redirect('/my/seller/register')
+        
+        Commission = request.env['seller.commission'].sudo()
+        domain = [('seller_id', '=', seller.id)]
+        
+        # Pager
+        commission_count = Commission.search_count(domain)
+        pager = portal_pager(
+            url='/my/seller/commissions',
+            total=commission_count,
+            page=page,
+            step=20
+        )
+        
+        commissions = Commission.search(
+            domain,
+            order='create_date desc',
+            limit=20,
+            offset=pager['offset']
+        )
+        
+        # Calculate totals
+        total_earnings = sum(commissions.mapped('seller_earnings'))
+        total_pending = sum(commissions.filtered(lambda c: c.state in ('pending', 'confirmed')).mapped('seller_earnings'))
+        total_paid = sum(commissions.filtered(lambda c: c.state == 'paid').mapped('seller_earnings'))
+        
+        values = {
+            'page_name': 'seller_commissions',
+            'seller': seller,
+            'commissions': commissions,
+            'pager': pager,
+            'total_earnings': total_earnings,
+            'total_pending': total_pending,
+            'total_paid': total_paid,
+            'commission_rate': seller.commission_rate,
+        }
+        
+        return request.render('smart_ecommerce_extension.seller_commissions', values)
+
