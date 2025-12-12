@@ -820,13 +820,13 @@
                                     </div>
                                 </div>
                                 <div class="col-md-9">
-                                    <h4 t-field="seller.company_name"/>
+                                    <h4 t-esc="seller.company_name"/>
                                     <p class="text-muted">
-                                        <i class="fa fa-user me-1"/> <t t-field="seller.user_id.name"/>
+                                        <i class="fa fa-user me-1"/> <span t-esc="seller.user_id.name"/>
                                     </p>
-                                    <span class="badge"
-                                          t-att-class="'bg-success' if seller.state == 'approved' else 'bg-warning' if seller.state == 'pending' else 'bg-secondary'"
-                                          t-field="seller.state"/>
+                                    <span t-att-class="'badge ' + ('bg-success' if seller.state == 'approved' else 'bg-warning' if seller.state == 'pending' else 'bg-secondary')">
+                                        <t t-esc="dict(seller._fields['state'].selection).get(seller.state, seller.state)"/>
+                                    </span>
                                 </div>
                             </div>
                             
@@ -1146,7 +1146,7 @@
         <t t-call="portal.portal_layout">
             <t t-set="breadcrumbs_searchbar" t-value="True"/>
             <t t-call="portal.portal_searchbar">
-                <t t-set="title">My Products (<t t-esc="product_count"/>)</t>
+                <t t-set="title">My Products</t>
             </t>
             
             <div class="container py-4">
@@ -1158,40 +1158,116 @@
                     <a href="/my/seller/documents" class="alert-link ms-2">Upload Documents</a>
                 </div>
                 
+                <!-- Stats Cards -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-2 col-4">
+                        <div class="card text-center h-100">
+                            <div class="card-body py-2">
+                                <h4 class="mb-0" t-esc="stats.get('total', 0)"/>
+                                <small class="text-muted">Total</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-4">
+                        <div class="card text-center h-100 border-secondary">
+                            <div class="card-body py-2">
+                                <h4 class="mb-0 text-secondary" t-esc="stats.get('draft', 0)"/>
+                                <small class="text-muted">Draft</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-4">
+                        <div class="card text-center h-100 border-warning">
+                            <div class="card-body py-2">
+                                <h4 class="mb-0 text-warning" t-esc="stats.get('pending', 0)"/>
+                                <small class="text-muted">Pending</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-4">
+                        <div class="card text-center h-100 border-success">
+                            <div class="card-body py-2">
+                                <h4 class="mb-0 text-success" t-esc="stats.get('approved', 0)"/>
+                                <small class="text-muted">Approved</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-4">
+                        <div class="card text-center h-100 border-primary">
+                            <div class="card-body py-2">
+                                <h4 class="mb-0 text-primary" t-esc="stats.get('published', 0)"/>
+                                <small class="text-muted">Published</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-4">
+                        <a t-if="seller.can_do_commercial_actions" href="/my/seller/products/new" class="card text-center h-100 bg-primary text-white text-decoration-none">
+                            <div class="card-body py-2 d-flex align-items-center justify-content-center">
+                                <i class="fa fa-plus me-2"/><span>Add Product</span>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Filter Tabs -->
+                <ul class="nav nav-tabs mb-4">
+                    <t t-foreach="searchbar_filters.items()" t-as="filter_item">
+                        <li class="nav-item">
+                            <a t-att-class="'nav-link ' + ('active' if filterby == filter_item[0] else '')"
+                               t-att-href="'/my/seller/products?filterby=' + filter_item[0]">
+                                <t t-esc="filter_item[1].get('label')"/>
+                            </a>
+                        </li>
+                    </t>
+                </ul>
+                
                 <!-- Products Grid -->
                 <t t-if="products">
                     <div class="row g-4">
                         <t t-foreach="products" t-as="product">
                             <div class="col-md-4 col-lg-3">
-                                <div class="card h-100">
-                                    <div class="position-relative">
-                                        <t t-if="product.image_256">
-                                            <img t-att-src="'data:image/png;base64,' + product.image_256.decode('utf-8')" 
-                                                 class="card-img-top" style="height: 180px; object-fit: cover;"/>
-                                        </t>
-                                        <t t-else="">
-                                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 180px;">
-                                                <i class="fa fa-image fa-3x text-muted"/>
+                                <a t-att-href="'/my/seller/products/' + str(product.id)" class="text-decoration-none">
+                                    <div class="card h-100 product-card">
+                                        <div class="position-relative">
+                                            <t t-if="product.image_256">
+                                                <img t-att-src="'data:image/png;base64,' + product.image_256.decode('utf-8')" 
+                                                     class="card-img-top" style="height: 180px; object-fit: cover;"/>
+                                            </t>
+                                            <t t-else="">
+                                                <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 180px;">
+                                                    <i class="fa fa-image fa-3x text-muted"/>
+                                                </div>
+                                            </t>
+                                            <!-- Status Badge -->
+                                            <span t-att-class="'badge position-absolute top-0 end-0 m-2 ' + 
+                                                  ('bg-success' if product.is_published else 
+                                                   'bg-warning text-dark' if product.product_state == 'pending' else
+                                                   'bg-danger' if product.product_state == 'rejected' else
+                                                   'bg-info' if product.product_state == 'approved' else 'bg-secondary')">
+                                                <t t-if="product.is_published">Published</t>
+                                                <t t-elif="product.product_state == 'pending'">Pending</t>
+                                                <t t-elif="product.product_state == 'rejected'">Rejected</t>
+                                                <t t-elif="product.product_state == 'approved'">Approved</t>
+                                                <t t-else="">Draft</t>
+                                            </span>
+                                        </div>
+                                        <div class="card-body">
+                                            <h6 class="card-title text-truncate text-dark" t-att-title="product.name">
+                                                <t t-esc="product.name"/>
+                                            </h6>
+                                            <p class="card-text mb-1">
+                                                <strong class="text-primary" t-field="product.list_price" 
+                                                        t-options="{'widget': 'monetary', 'display_currency': product.currency_id}"/>
+                                            </p>
+                                            <div class="small text-muted">
+                                                <span class="me-3"><i class="fa fa-cubes me-1"/><t t-esc="int(product.qty_available)"/> in stock</span>
                                             </div>
-                                        </t>
-                                        <span t-att-class="'badge position-absolute top-0 end-0 m-2 ' + ('bg-success' if product.is_published else 'bg-secondary')">
-                                            <t t-if="product.is_published">Published</t>
-                                            <t t-else="">Draft</t>
-                                        </span>
-                                    </div>
-                                    <div class="card-body">
-                                        <h6 class="card-title text-truncate" t-att-title="product.name">
-                                            <t t-esc="product.name"/>
-                                        </h6>
-                                        <p class="card-text">
-                                            <strong class="text-primary" t-field="product.list_price" 
-                                                    t-options="{'widget': 'monetary', 'display_currency': product.currency_id}"/>
-                                        </p>
-                                        <div class="small text-muted">
-                                            <span class="me-3"><i class="fa fa-cubes me-1"/><t t-esc="product.qty_available"/> in stock</span>
+                                            <div t-if="product.product_state == 'rejected'" class="text-danger small mt-2">
+                                                <i class="fa fa-exclamation-circle me-1"/>Action required
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                </a>
                             </div>
                         </t>
                     </div>
@@ -1204,10 +1280,337 @@
                 <t t-else="">
                     <div class="text-center py-5">
                         <i class="fa fa-cubes fa-4x text-muted mb-3"/>
-                        <h4 class="text-muted">No products yet</h4>
-                        <p class="text-muted">Start adding products to your store.</p>
+                        <h4 class="text-muted">No products found</h4>
+                        <p class="text-muted">
+                            <t t-if="filterby != 'all'">Try changing the filter or </t>
+                            <a t-if="seller.can_do_commercial_actions" href="/my/seller/products/new">add your first product</a>
+                        </p>
                     </div>
                 </t>
+            </div>
+        </t>
+    </template>
+
+    <!-- ============================================================ -->
+    <!-- SELLER PRODUCT FORM (NEW) -->
+    <!-- ============================================================ -->
+    
+    <template id="seller_product_form" name="Seller New Product">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+            <t t-call="portal.portal_searchbar">
+                <t t-set="title">Add New Product</t>
+            </t>
+            
+            <div class="container py-4">
+                <!-- Error Messages -->
+                <div t-if="error == 'name_required'" class="alert alert-danger">Product name is required.</div>
+                <div t-if="error == 'price_required'" class="alert alert-danger">A valid price is required.</div>
+                <div t-if="error == 'server_error'" class="alert alert-danger">An error occurred. Please try again.</div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fa fa-plus me-2"/>Add New Product</h5>
+                    </div>
+                    <div class="card-body">
+                        <form action="/my/seller/products/create" method="post" enctype="multipart/form-data">
+                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                            
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="mb-3">
+                                        <label class="form-label">Product Name *</label>
+                                        <input type="text" name="name" class="form-control" required="required"
+                                               placeholder="Enter product name"/>
+                                    </div>
+                                    
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Price *</label>
+                                            <div class="input-group">
+                                                <input type="number" name="list_price" class="form-control" required="required"
+                                                       step="0.01" min="0.01" placeholder="0.00"/>
+                                                <span class="input-group-text" t-esc="seller.currency_id.symbol"/>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Seller SKU</label>
+                                            <input type="text" name="seller_sku" class="form-control"
+                                                   placeholder="Your product code"/>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Brand</label>
+                                            <input type="text" name="brand" class="form-control"
+                                                   placeholder="e.g., Samsung, Apple"/>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Model</label>
+                                            <input type="text" name="product_model" class="form-control"
+                                                   placeholder="e.g., Galaxy S24"/>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Condition</label>
+                                            <select name="product_condition" class="form-select">
+                                                <option value="new">New</option>
+                                                <option value="like_new">Like New</option>
+                                                <option value="very_good">Very Good</option>
+                                                <option value="good">Good</option>
+                                                <option value="acceptable">Acceptable</option>
+                                                <option value="refurbished">Refurbished</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Warranty (months)</label>
+                                            <input type="number" name="warranty_months" class="form-control"
+                                                   value="0" min="0"/>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Categories</label>
+                                        <select name="marketplace_categ_ids" class="form-select" multiple="multiple" size="4">
+                                            <t t-foreach="categories" t-as="cat">
+                                                <option t-att-value="cat.id"><t t-esc="cat.complete_name"/></option>
+                                            </t>
+                                        </select>
+                                        <small class="text-muted">Hold Ctrl/Cmd to select multiple</small>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Description</label>
+                                        <textarea name="description" class="form-control" rows="4"
+                                                  placeholder="Describe your product..."></textarea>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label class="form-label">Product Image</label>
+                                        <input type="file" name="image" class="form-control" accept="image/*"/>
+                                        <small class="text-muted">Recommended: 800x800px or higher</small>
+                                    </div>
+                                    
+                                    <div class="alert alert-info">
+                                        <h6><i class="fa fa-info-circle me-1"/>Product Workflow</h6>
+                                        <ol class="mb-0 ps-3 small">
+                                            <li>Create your product (Draft)</li>
+                                            <li>Submit for approval</li>
+                                            <li>Admin reviews your product</li>
+                                            <li>Once approved, you can publish it</li>
+                                        </ol>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <hr/>
+                            
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fa fa-save me-2"/>Create Product
+                                </button>
+                                <a href="/my/seller/products" class="btn btn-outline-secondary">Cancel</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- ============================================================ -->
+    <!-- SELLER PRODUCT DETAIL -->
+    <!-- ============================================================ -->
+    
+    <template id="seller_product_detail" name="Seller Product Detail">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+            <t t-call="portal.portal_searchbar">
+                <t t-set="title" t-value="product.name"/>
+            </t>
+            
+            <div class="container py-4">
+                <!-- Success/Error Messages -->
+                <div t-if="success == 'created'" class="alert alert-success alert-dismissible fade show">
+                    <i class="fa fa-check-circle me-2"/>Product created successfully! Submit it for approval when ready.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"/>
+                </div>
+                <div t-if="success == 'updated'" class="alert alert-success alert-dismissible fade show">
+                    <i class="fa fa-check-circle me-2"/>Product updated successfully!
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"/>
+                </div>
+                <div t-if="success == 'submitted'" class="alert alert-success alert-dismissible fade show">
+                    <i class="fa fa-check-circle me-2"/>Product submitted for approval! You'll be notified once it's reviewed.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"/>
+                </div>
+                <div t-if="error" class="alert alert-danger alert-dismissible fade show">
+                    <i class="fa fa-exclamation-circle me-2"/><t t-esc="error"/>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"/>
+                </div>
+                
+                <!-- Status Banner -->
+                <div t-if="product.product_state == 'pending'" class="alert alert-warning">
+                    <i class="fa fa-clock-o me-2"/><strong>Pending Approval</strong> - Your product is being reviewed by our team.
+                </div>
+                <div t-if="product.product_state == 'rejected'" class="alert alert-danger">
+                    <i class="fa fa-times-circle me-2"/><strong>Rejected</strong>
+                    <t t-if="product.rejection_reason">
+                        <br/><strong>Reason:</strong> <t t-esc="product.rejection_reason"/>
+                    </t>
+                    <br/><small>Please update your product and submit again.</small>
+                </div>
+                <div t-if="product.product_state == 'approved' and not product.is_published" class="alert alert-info">
+                    <i class="fa fa-check-circle me-2"/><strong>Approved!</strong> Your product is ready to be published.
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="d-flex gap-2 mb-4">
+                    <a href="/my/seller/products" class="btn btn-outline-secondary">
+                        <i class="fa fa-arrow-left me-1"/>Back to Products
+                    </a>
+                    <t t-if="product.product_state == 'draft' or product.product_state == 'rejected'">
+                        <form t-att-action="'/my/seller/products/' + str(product.id) + '/submit'" method="post" class="d-inline">
+                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fa fa-paper-plane me-1"/>Submit for Approval
+                            </button>
+                        </form>
+                    </t>
+                </div>
+                
+                <div class="row">
+                    <!-- Product Image -->
+                    <div class="col-md-4 mb-4">
+                        <div class="card">
+                            <t t-if="product.image_512">
+                                <img t-att-src="'data:image/png;base64,' + product.image_512.decode('utf-8')" 
+                                     class="card-img-top" style="object-fit: cover;"/>
+                            </t>
+                            <t t-else="">
+                                <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 300px;">
+                                    <i class="fa fa-image fa-4x text-muted"/>
+                                </div>
+                            </t>
+                            <div class="card-body text-center">
+                                <span t-att-class="'badge ' + 
+                                      ('bg-success' if product.is_published else 
+                                       'bg-warning text-dark' if product.product_state == 'pending' else
+                                       'bg-danger' if product.product_state == 'rejected' else
+                                       'bg-info' if product.product_state == 'approved' else 'bg-secondary')">
+                                    <t t-if="product.is_published">Published</t>
+                                    <t t-elif="product.product_state == 'pending'">Pending Approval</t>
+                                    <t t-elif="product.product_state == 'rejected'">Rejected</t>
+                                    <t t-elif="product.product_state == 'approved'">Approved</t>
+                                    <t t-else="">Draft</t>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Edit Form -->
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fa fa-edit me-2"/>Edit Product</h5>
+                            </div>
+                            <div class="card-body">
+                                <form t-att-action="'/my/seller/products/' + str(product.id) + '/update'" 
+                                      method="post" enctype="multipart/form-data">
+                                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Product Name *</label>
+                                        <input type="text" name="name" class="form-control" required="required"
+                                               t-att-value="product.name"/>
+                                    </div>
+                                    
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Price *</label>
+                                            <div class="input-group">
+                                                <input type="number" name="list_price" class="form-control" required="required"
+                                                       step="0.01" min="0.01" t-att-value="product.list_price"/>
+                                                <span class="input-group-text" t-esc="product.currency_id.symbol"/>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Seller SKU</label>
+                                            <input type="text" name="seller_sku" class="form-control"
+                                                   t-att-value="product.seller_sku or ''"/>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Brand</label>
+                                            <input type="text" name="brand" class="form-control"
+                                                   t-att-value="product.brand or ''"/>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Model</label>
+                                            <input type="text" name="product_model" class="form-control"
+                                                   t-att-value="product.product_model or ''"/>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Condition</label>
+                                            <select name="product_condition" class="form-select">
+                                                <option value="new" t-att-selected="product.product_condition == 'new'">New</option>
+                                                <option value="like_new" t-att-selected="product.product_condition == 'like_new'">Like New</option>
+                                                <option value="very_good" t-att-selected="product.product_condition == 'very_good'">Very Good</option>
+                                                <option value="good" t-att-selected="product.product_condition == 'good'">Good</option>
+                                                <option value="acceptable" t-att-selected="product.product_condition == 'acceptable'">Acceptable</option>
+                                                <option value="refurbished" t-att-selected="product.product_condition == 'refurbished'">Refurbished</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Warranty (months)</label>
+                                            <input type="number" name="warranty_months" class="form-control"
+                                                   t-att-value="product.warranty_months or 0" min="0"/>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Categories</label>
+                                        <select name="marketplace_categ_ids" class="form-select" multiple="multiple" size="4">
+                                            <t t-foreach="categories" t-as="cat">
+                                                <option t-att-value="cat.id" 
+                                                        t-att-selected="cat.id in product.marketplace_categ_ids.ids">
+                                                    <t t-esc="cat.complete_name"/>
+                                                </option>
+                                            </t>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Description</label>
+                                        <textarea name="description" class="form-control" rows="4"><t t-esc="product.description_sale or ''"/></textarea>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Update Image</label>
+                                        <input type="file" name="image" class="form-control" accept="image/*"/>
+                                        <small class="text-muted">Leave empty to keep current image</small>
+                                    </div>
+                                    
+                                    <div class="d-flex gap-2">
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fa fa-save me-2"/>Save Changes
+                                        </button>
+                                        <a href="/my/seller/products" class="btn btn-outline-secondary">Cancel</a>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </t>
     </template>

@@ -11,14 +11,32 @@
         <field name="inherit_id" ref="product.product_template_only_form_view"/>
         <field name="priority">20</field>
         <field name="arch" type="xml">
-            <!-- Add KYC warning banner at top of sheet -->
+            <!-- Add warning banners at top of sheet -->
             <xpath expr="//sheet" position="inside">
+                <!-- Rejection notice -->
+                <div class="alert alert-danger mb-3" role="alert"
+                     invisible="product_state != 'rejected'">
+                    <strong><i class="fa fa-times-circle"/> Product Rejected</strong>
+                    <br/>
+                    Reason: <field name="rejection_reason" readonly="1" nolabel="1"/>
+                </div>
+                
+                <!-- KYC warning -->
                 <div class="alert alert-warning mb-3" role="alert"
                      invisible="not seller_id or seller_can_sell">
                     <strong><i class="fa fa-exclamation-triangle"/> Publishing Restricted</strong>
                     <p class="mb-0">
                         This product cannot be published because the seller's KYC verification is not complete.
                         Please ensure the seller account is approved and KYC documents are verified.
+                    </p>
+                </div>
+                
+                <!-- Pending approval notice -->
+                <div class="alert alert-info mb-3" role="alert"
+                     invisible="product_state != 'pending'">
+                    <strong><i class="fa fa-clock-o"/> Pending Approval</strong>
+                    <p class="mb-0">
+                        This product is waiting for admin approval before it can be published.
                     </p>
                 </div>
             </xpath>
@@ -33,20 +51,46 @@
             
             <!-- Add new page for eCommerce Extension fields -->
             <xpath expr="//page[@name='sales']" position="after">
-                <page string="eCommerce Extension" name="ecommerce_extension">
+                <page string="Marketplace" name="marketplace_extension">
                     <group>
-                        <group string="Marketplace">
+                        <group string="Seller Information">
                             <field name="seller_id" options="{'no_create': True}" placeholder="Select seller..."/>
+                            <field name="seller_sku" placeholder="Seller's product code"/>
                             <field name="seller_can_sell" string="Seller Active" widget="boolean" readonly="1"
-                                   invisible="not seller_id"
-                                   help="Shows if seller is approved and KYC verified"/>
+                                   invisible="not seller_id"/>
                             <field name="seller_kyc_verified" invisible="1"/>
                         </group>
-                        <group string="Brand &amp; Model">
-                            <field name="brand" placeholder="e.g., Samsung, Apple, Nike"/>
-                            <field name="product_model" placeholder="e.g., Galaxy S23, iPhone 15"/>
+                        <group string="Marketplace Categories">
+                            <field name="marketplace_categ_ids" widget="many2many_tags"
+                                   placeholder="Select marketplace categories..."/>
+                            <field name="is_featured"/>
+                            <field name="featured_start_date" invisible="not is_featured"/>
+                            <field name="featured_end_date" invisible="not is_featured"/>
                         </group>
                     </group>
+                    <group>
+                        <group string="Product Details">
+                            <field name="brand" placeholder="e.g., Samsung, Apple, Nike"/>
+                            <field name="product_model" placeholder="e.g., Galaxy S23, iPhone 15"/>
+                            <field name="product_condition"/>
+                        </group>
+                        <group string="Warranty &amp; Returns">
+                            <field name="warranty_months"/>
+                            <field name="return_days"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Warranty Details" colspan="2">
+                            <field name="warranty_description" placeholder="Describe warranty terms..."/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Return Policy" colspan="2">
+                            <field name="return_policy" placeholder="Describe return policy..."/>
+                        </group>
+                    </group>
+                </page>
+                <page string="Media &amp; Content" name="media_content">
                     <group>
                         <group string="Media">
                             <field name="video_url" placeholder="https://youtube.com/watch?v=..."/>
@@ -56,6 +100,8 @@
                     <group string="Specifications">
                         <field name="specifications" widget="html" colspan="2" placeholder="Enter product specifications..."/>
                     </group>
+                </page>
+                <page string="Stock &amp; Shipping" name="stock_shipping">
                     <group>
                         <group string="Stock Settings">
                             <field name="low_stock_threshold"/>
@@ -63,11 +109,28 @@
                                    decoration-success="availability_status == 'in_stock'"
                                    decoration-warning="availability_status == 'low_stock'"
                                    decoration-danger="availability_status == 'out_of_stock'"/>
+                            <field name="seller_available_qty" invisible="not seller_id"/>
                         </group>
                         <group string="Shipping">
                             <field name="shipping_weight_kg"/>
                             <field name="estimated_delivery_days"/>
                         </group>
+                    </group>
+                </page>
+                <page string="Admin Review" name="admin_review" groups="sales_team.group_sale_manager">
+                    <group>
+                        <group string="Approval Status">
+                            <field name="product_state" readonly="1"/>
+                            <field name="submitted_date" readonly="1"/>
+                            <field name="approved_date" readonly="1"/>
+                            <field name="approved_by" readonly="1"/>
+                        </group>
+                        <group string="Review">
+                            <field name="rejection_reason" readonly="product_state != 'rejected'"/>
+                        </group>
+                    </group>
+                    <group string="Admin Notes">
+                        <field name="admin_review_notes" placeholder="Internal notes for review..."/>
                     </group>
                 </page>
             </xpath>
@@ -171,19 +234,29 @@
         <field name="priority">5</field>
         <field name="arch" type="xml">
             <list string="Products" default_order="name"
-                  decoration-muted="seller_id and not seller_can_sell">
+                  decoration-muted="product_state == 'rejected'"
+                  decoration-info="product_state == 'pending'"
+                  decoration-success="product_state == 'approved' and is_published">
                 <field name="name"/>
                 <field name="seller_id" optional="show"/>
-                <field name="seller_can_sell" string="Seller Active" widget="boolean" optional="hide"/>
-                <field name="public_categ_ids" widget="many2many_tags" string="Categories"/>
+                <field name="seller_can_sell" column_invisible="1"/>
+                <field name="marketplace_categ_ids" widget="many2many_tags" string="Categories" optional="show"/>
                 <field name="brand" optional="show"/>
+                <field name="product_condition" optional="hide"/>
                 <field name="list_price" string="Price"/>
                 <field name="qty_available" string="Qty On Hand"/>
                 <field name="availability_status" widget="badge" 
                        decoration-success="availability_status == 'in_stock'"
                        decoration-warning="availability_status == 'low_stock'"
-                       decoration-danger="availability_status == 'out_of_stock'"/>
-                <field name="is_published" widget="boolean_toggle" string="Published"/>
+                       decoration-danger="availability_status == 'out_of_stock'"
+                       optional="show"/>
+                <field name="product_state" widget="badge"
+                       decoration-muted="product_state == 'draft'"
+                       decoration-info="product_state == 'pending'"
+                       decoration-success="product_state == 'approved'"
+                       decoration-danger="product_state == 'rejected'"/>
+                <field name="is_published" widget="boolean_toggle" string="Published"
+                       readonly="product_state != 'approved'"/>
             </list>
         </field>
     </record>
@@ -255,10 +328,14 @@
                 <field name="name" string="Product" filter_domain="['|', '|', ('default_code', 'ilike', self), ('name', 'ilike', self), ('barcode', 'ilike', self)]"/>
                 <field name="seller_id"/>
                 <field name="brand"/>
-                <field name="public_categ_ids" string="Category"/>
+                <field name="marketplace_categ_ids" string="Marketplace Category"/>
                 <field name="categ_id" string="Internal Category"/>
                 <separator/>
-                <filter string="Can be Sold" name="filter_to_sell" domain="[('sale_ok', '=', True)]"/>
+                <filter string="Draft" name="filter_draft" domain="[('product_state', '=', 'draft')]"/>
+                <filter string="Pending Approval" name="filter_pending" domain="[('product_state', '=', 'pending')]"/>
+                <filter string="Approved" name="filter_approved" domain="[('product_state', '=', 'approved')]"/>
+                <filter string="Rejected" name="filter_rejected" domain="[('product_state', '=', 'rejected')]"/>
+                <separator/>
                 <filter string="Published" name="filter_published" domain="[('is_published', '=', True)]"/>
                 <filter string="Unpublished" name="filter_unpublished" domain="[('is_published', '=', False)]"/>
                 <separator/>
@@ -266,22 +343,351 @@
                 <filter string="Low Stock" name="filter_low_stock" domain="[('availability_status', '=', 'low_stock')]"/>
                 <filter string="Out of Stock" name="filter_out_of_stock" domain="[('availability_status', '=', 'out_of_stock')]"/>
                 <separator/>
-                <filter string="Has Video" name="filter_has_video" domain="[('video_url', '!=', False)]"/>
-                <filter string="Has Brand" name="filter_has_brand" domain="[('brand', '!=', False)]"/>
+                <filter string="Featured" name="filter_featured" domain="[('is_featured', '=', True)]"/>
                 <filter string="Has Seller" name="filter_has_seller" domain="[('seller_id', '!=', False)]"/>
-                <separator/>
-                <filter string="Seller Active (KYC OK)" name="filter_seller_active" 
+                <filter string="Seller KYC OK" name="filter_seller_active" 
                         domain="[('seller_id', '!=', False), ('seller_can_sell', '=', True)]"/>
-                <filter string="Seller Not Active" name="filter_seller_not_active" 
-                        domain="[('seller_id', '!=', False), ('seller_can_sell', '=', False)]"/>
                 <group expand="0" string="Group By">
+                    <filter string="Status" name="group_by_state" context="{'group_by': 'product_state'}"/>
                     <filter string="Seller" name="group_by_seller" context="{'group_by': 'seller_id'}"/>
-                    <filter string="Category" name="group_by_public_categ" context="{'group_by': 'public_categ_ids'}"/>
+                    <filter string="Marketplace Category" name="group_by_marketplace_categ" context="{'group_by': 'marketplace_categ_ids'}"/>
                     <filter string="Brand" name="group_by_brand" context="{'group_by': 'brand'}"/>
+                    <filter string="Condition" name="group_by_condition" context="{'group_by': 'product_condition'}"/>
                     <filter string="Availability" name="group_by_availability" context="{'group_by': 'availability_status'}"/>
-                    <filter string="Internal Category" name="group_by_categ" context="{'group_by': 'categ_id'}"/>
                 </group>
             </search>
+        </field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- MARKETPLACE PRODUCT FORM WITH WORKFLOW -->
+    <!-- ============================================================ -->
+    
+    <!-- Marketplace Product Form View (with workflow) -->
+    <record id="view_smart_product_template_form" model="ir.ui.view">
+        <field name="name">product.template.form.smart.marketplace</field>
+        <field name="model">product.template</field>
+        <field name="priority">5</field>
+        <field name="arch" type="xml">
+            <form string="Marketplace Product">
+                <header>
+                    <button name="action_submit_for_approval" string="Submit for Approval" type="object"
+                            class="btn-primary" invisible="product_state != 'draft'"
+                            groups="base.group_user"/>
+                    <button name="action_approve_product" string="Approve" type="object"
+                            class="btn-success" invisible="product_state != 'pending'"
+                            groups="sales_team.group_sale_manager"/>
+                    <button name="action_reject_product" string="Reject" type="object"
+                            class="btn-danger" invisible="product_state != 'pending'"
+                            groups="sales_team.group_sale_manager"/>
+                    <button name="action_quick_approve_and_publish" string="Approve &amp; Publish" type="object"
+                            class="btn-success" invisible="product_state not in ('draft', 'pending')"
+                            groups="sales_team.group_sale_manager"/>
+                    <button name="action_set_to_draft" string="Reset to Draft" type="object"
+                            class="btn-secondary" invisible="product_state in ('draft', 'approved')"
+                            groups="sales_team.group_sale_manager"/>
+                    <button name="action_publish" string="Publish" type="object"
+                            class="btn-primary" invisible="is_published or product_state != 'approved'"/>
+                    <button name="action_unpublish" string="Unpublish" type="object"
+                            class="btn-secondary" invisible="not is_published"/>
+                    <field name="product_state" widget="statusbar" 
+                           statusbar_visible="draft,pending,approved"/>
+                </header>
+                <sheet>
+                    <!-- Alert banners -->
+                    <div class="alert alert-danger mb-3" role="alert"
+                         invisible="product_state != 'rejected'">
+                        <strong><i class="fa fa-times-circle"/> Product Rejected</strong>
+                        <br/>Reason: <field name="rejection_reason" readonly="1" nolabel="1"/>
+                    </div>
+                    <div class="alert alert-warning mb-3" role="alert"
+                         invisible="not seller_id or seller_can_sell">
+                        <strong><i class="fa fa-exclamation-triangle"/> Publishing Restricted</strong>
+                        <p class="mb-0">Seller KYC verification required.</p>
+                    </div>
+                    
+                    <field name="image_1920" widget="image" class="oe_avatar" options="{'preview_image': 'image_128'}"/>
+                    <widget name="web_ribbon" title="Published" bg_color="text-bg-success" invisible="not is_published"/>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+                    
+                    <div class="oe_title">
+                        <label for="name" string="Product Name"/>
+                        <h1><field name="name" placeholder="Product Name"/></h1>
+                    </div>
+                    
+                    <group>
+                        <group string="Sales Information">
+                            <field name="list_price" string="Price"/>
+                            <field name="sale_ok"/>
+                            <field name="is_published" widget="boolean_toggle" readonly="product_state != 'approved'"/>
+                        </group>
+                        <group string="Seller Information">
+                            <field name="seller_id" options="{'no_create': True}"/>
+                            <field name="seller_sku"/>
+                            <field name="seller_can_sell" invisible="1"/>
+                            <field name="seller_kyc_verified" invisible="1"/>
+                        </group>
+                    </group>
+                    
+                    <notebook>
+                        <page string="Product Details" name="details">
+                            <group>
+                                <group>
+                                    <field name="brand"/>
+                                    <field name="product_model"/>
+                                    <field name="product_condition"/>
+                                </group>
+                                <group>
+                                    <field name="warranty_months"/>
+                                    <field name="return_days"/>
+                                    <field name="is_featured"/>
+                                </group>
+                            </group>
+                            <group string="Categories">
+                                <field name="marketplace_categ_ids" widget="many2many_tags" nolabel="1" colspan="2"/>
+                            </group>
+                            <group string="Description">
+                                <field name="description_sale" nolabel="1" colspan="2" placeholder="Describe your product..."/>
+                            </group>
+                        </page>
+                        <page string="Stock &amp; Inventory" name="inventory">
+                            <group>
+                                <group>
+                                    <field name="type"/>
+                                    <field name="categ_id"/>
+                                    <field name="default_code"/>
+                                </group>
+                                <group>
+                                    <field name="qty_available" readonly="1"/>
+                                    <field name="low_stock_threshold"/>
+                                    <field name="availability_status" widget="badge" readonly="1"
+                                           decoration-success="availability_status == 'in_stock'"
+                                           decoration-warning="availability_status == 'low_stock'"
+                                           decoration-danger="availability_status == 'out_of_stock'"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Shipping">
+                                    <field name="shipping_weight_kg"/>
+                                    <field name="estimated_delivery_days"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Media" name="media">
+                            <group>
+                                <field name="video_url" placeholder="YouTube or Vimeo URL"/>
+                                <field name="image_hover" widget="image" string="Hover Image"/>
+                            </group>
+                            <group string="Specifications">
+                                <field name="specifications" widget="html" nolabel="1"/>
+                            </group>
+                        </page>
+                        <page string="Admin Review" name="admin_review" groups="sales_team.group_sale_manager">
+                            <group>
+                                <group>
+                                    <field name="submitted_date" readonly="1"/>
+                                    <field name="approved_date" readonly="1"/>
+                                    <field name="approved_by" readonly="1"/>
+                                </group>
+                                <group>
+                                    <field name="rejection_reason"/>
+                                </group>
+                            </group>
+                            <group>
+                                <field name="admin_review_notes" placeholder="Internal admin notes..."/>
+                            </group>
+                        </page>
+                    </notebook>
+                    <field name="active" invisible="1"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- PRODUCT APPROVAL ACTIONS -->
+    <!-- ============================================================ -->
+
+    <!-- Pending Products Action -->
+    <record id="action_product_pending_approval" model="ir.actions.act_window">
+        <field name="name">Products Pending Approval</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="domain">[('product_state', '=', 'pending')]</field>
+        <field name="context">{'search_default_filter_pending': 1}</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('view_smart_product_template_list')}),
+            (0, 0, {'view_mode': 'kanban', 'view_id': ref('view_smart_product_template_kanban')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('view_smart_product_template_form')}),
+        ]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No products pending approval
+            </p>
+            <p>
+                Products submitted by sellers will appear here for review.
+            </p>
+        </field>
+    </record>
+
+    <!-- All Marketplace Products Action -->
+    <record id="action_marketplace_products" model="ir.actions.act_window">
+        <field name="name">Marketplace Products</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="domain">[('seller_id', '!=', False)]</field>
+        <field name="context">{}</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'kanban', 'view_id': ref('view_smart_product_template_kanban')}),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('view_smart_product_template_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('view_smart_product_template_form')}),
+        ]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No marketplace products yet
+            </p>
+        </field>
+    </record>
+
+    <!-- Product Reject Wizard -->
+    <record id="view_product_reject_wizard_form" model="ir.ui.view">
+        <field name="name">product.reject.wizard.form</field>
+        <field name="model">product.reject.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Reject Product">
+                <group>
+                    <field name="product_id" readonly="1"/>
+                    <field name="rejection_reason" placeholder="Explain why this product is being rejected..."/>
+                </group>
+                <footer>
+                    <button name="action_reject" string="Reject Product" type="object" class="btn-danger"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- MARKETPLACE CATEGORY VIEWS -->
+    <!-- ============================================================ -->
+
+    <!-- Category Tree View -->
+    <record id="view_marketplace_category_tree" model="ir.ui.view">
+        <field name="name">marketplace.category.tree</field>
+        <field name="model">marketplace.category</field>
+        <field name="arch" type="xml">
+            <list string="Marketplace Categories" default_order="sequence, complete_name">
+                <field name="sequence" widget="handle"/>
+                <field name="complete_name"/>
+                <field name="slug"/>
+                <field name="product_count"/>
+                <field name="is_featured" widget="boolean_toggle"/>
+                <field name="show_on_homepage" widget="boolean_toggle"/>
+                <field name="commission_rate" optional="show"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Category Form View -->
+    <record id="view_marketplace_category_form" model="ir.ui.view">
+        <field name="name">marketplace.category.form</field>
+        <field name="model">marketplace.category</field>
+        <field name="arch" type="xml">
+            <form string="Marketplace Category">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button type="object" name="action_view_products"
+                                class="oe_stat_button" icon="fa-cubes">
+                            <field name="product_count" widget="statinfo" string="Products"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Featured" bg_color="text-bg-success"
+                            invisible="not is_featured"/>
+                    <field name="image" widget="image" class="oe_avatar"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="Category Name"/></h1>
+                    </div>
+                    <group>
+                        <group string="Hierarchy">
+                            <field name="parent_id"/>
+                            <field name="sequence"/>
+                        </group>
+                        <group string="Display">
+                            <field name="icon" placeholder="fa-laptop"/>
+                            <field name="color" widget="color"/>
+                            <field name="is_featured"/>
+                            <field name="show_on_homepage"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="SEO">
+                            <field name="slug"/>
+                            <field name="meta_title"/>
+                            <field name="meta_description"/>
+                        </group>
+                        <group string="Commission">
+                            <field name="commission_rate" help="If 0, seller default rate is used"/>
+                        </group>
+                    </group>
+                    <group string="Description">
+                        <field name="description" placeholder="Category description..."/>
+                    </group>
+                    <notebook>
+                        <page string="Child Categories" name="children">
+                            <field name="child_ids">
+                                <list>
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="product_count"/>
+                                    <field name="is_featured"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Website Categories Mapping" name="website_mapping">
+                            <field name="website_categ_ids" widget="many2many_tags"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Category Search View -->
+    <record id="view_marketplace_category_search" model="ir.ui.view">
+        <field name="name">marketplace.category.search</field>
+        <field name="model">marketplace.category</field>
+        <field name="arch" type="xml">
+            <search string="Search Categories">
+                <field name="name"/>
+                <field name="slug"/>
+                <filter string="Featured" name="featured" domain="[('is_featured', '=', True)]"/>
+                <filter string="On Homepage" name="homepage" domain="[('show_on_homepage', '=', True)]"/>
+                <filter string="Top Level" name="top_level" domain="[('parent_id', '=', False)]"/>
+                <filter string="Archived" name="archived" domain="[('active', '=', False)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Parent" name="group_parent" context="{'group_by': 'parent_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Category Action -->
+    <record id="action_marketplace_categories" model="ir.actions.act_window">
+        <field name="name">Marketplace Categories</field>
+        <field name="res_model">marketplace.category</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_top_level': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first marketplace category
+            </p>
+            <p>
+                Categories help organize products in your marketplace.
+            </p>
         </field>
     </record>
 </odoo>

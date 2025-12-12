@@ -495,7 +495,7 @@ class SellerPortal(CustomerPortal):
 
     @http.route(['/my/seller/products', '/my/seller/products/page/<int:page>'],
                 type='http', auth='user', website=True)
-    def seller_products(self, page=1, **kw):
+    def seller_products(self, page=1, filterby=None, **kw):
         """Seller products list"""
         seller = self._get_current_seller()
         
@@ -505,10 +505,24 @@ class SellerPortal(CustomerPortal):
         ProductTemplate = request.env['product.template'].sudo()
         domain = [('seller_id', '=', seller.id)]
         
+        # Filters
+        searchbar_filters = {
+            'all': {'label': _('All'), 'domain': []},
+            'draft': {'label': _('Draft'), 'domain': [('product_state', '=', 'draft')]},
+            'pending': {'label': _('Pending'), 'domain': [('product_state', '=', 'pending')]},
+            'approved': {'label': _('Approved'), 'domain': [('product_state', '=', 'approved')]},
+            'rejected': {'label': _('Rejected'), 'domain': [('product_state', '=', 'rejected')]},
+            'published': {'label': _('Published'), 'domain': [('is_published', '=', True)]},
+        }
+        if not filterby:
+            filterby = 'all'
+        domain += searchbar_filters[filterby]['domain']
+        
         # Pager
         product_count = ProductTemplate.search_count(domain)
         pager = portal_pager(
             url='/my/seller/products',
+            url_args={'filterby': filterby},
             total=product_count,
             page=page,
             step=20
@@ -521,15 +535,208 @@ class SellerPortal(CustomerPortal):
             offset=pager['offset']
         )
         
+        # Stats
+        all_products = ProductTemplate.search([('seller_id', '=', seller.id)])
+        stats = {
+            'total': len(all_products),
+            'draft': len(all_products.filtered(lambda p: p.product_state == 'draft')),
+            'pending': len(all_products.filtered(lambda p: p.product_state == 'pending')),
+            'approved': len(all_products.filtered(lambda p: p.product_state == 'approved')),
+            'published': len(all_products.filtered(lambda p: p.is_published)),
+        }
+        
         values = {
             'page_name': 'seller_products',
             'seller': seller,
             'products': products,
             'pager': pager,
             'product_count': product_count,
+            'searchbar_filters': searchbar_filters,
+            'filterby': filterby,
+            'stats': stats,
         }
         
         return request.render('smart_ecommerce_extension.seller_products', values)
+
+    @http.route('/my/seller/products/new', type='http', auth='user', website=True)
+    def seller_product_new(self, **kw):
+        """Create new product form"""
+        seller = self._get_current_seller()
+        
+        if not seller:
+            return request.redirect('/my/seller/register')
+        
+        if not seller.can_do_commercial_actions:
+            return request.render('smart_ecommerce_extension.seller_not_approved', {
+                'seller': seller,
+                'message': _('You need to complete KYC verification before adding products.'),
+            })
+        
+        # Get categories
+        categories = request.env['marketplace.category'].sudo().search([
+            ('active', '=', True)
+        ], order='complete_name')
+        
+        values = {
+            'page_name': 'seller_product_new',
+            'seller': seller,
+            'categories': categories,
+            'error': kw.get('error'),
+        }
+        
+        return request.render('smart_ecommerce_extension.seller_product_form', values)
+
+    @http.route('/my/seller/products/create', type='http', auth='user', website=True, methods=['POST'])
+    def seller_product_create(self, **kw):
+        """Create new product"""
+        import base64
+        
+        seller = self._get_current_seller()
+        
+        if not seller or not seller.can_do_commercial_actions:
+            return request.redirect('/my/seller/dashboard')
+        
+        try:
+            # Validate required fields
+            if not kw.get('name'):
+                return request.redirect('/my/seller/products/new?error=name_required')
+            if not kw.get('list_price') or float(kw.get('list_price', 0)) <= 0:
+                return request.redirect('/my/seller/products/new?error=price_required')
+            
+            vals = {
+                'name': kw.get('name'),
+                'seller_id': seller.id,
+                'list_price': float(kw.get('list_price', 0)),
+                'description_sale': kw.get('description', ''),
+                'brand': kw.get('brand', ''),
+                'product_model': kw.get('product_model', ''),
+                'seller_sku': kw.get('seller_sku', ''),
+                'product_condition': kw.get('product_condition', 'new'),
+                'warranty_months': int(kw.get('warranty_months', 0)),
+                'product_state': 'draft',
+                'sale_ok': True,
+                'purchase_ok': False,
+            }
+            
+            # Handle image upload
+            if kw.get('image'):
+                file_obj = kw.get('image')
+                if hasattr(file_obj, 'read'):
+                    vals['image_1920'] = base64.b64encode(file_obj.read())
+            
+            # Handle categories
+            if kw.get('marketplace_categ_ids'):
+                categ_ids = [int(c) for c in request.httprequest.form.getlist('marketplace_categ_ids')]
+                vals['marketplace_categ_ids'] = [(6, 0, categ_ids)]
+            
+            product = request.env['product.template'].sudo().create(vals)
+            
+            return request.redirect('/my/seller/products/%s?success=created' % product.id)
+            
+        except Exception as e:
+            _logger.error(f"Product creation error: {str(e)}", exc_info=True)
+            return request.redirect('/my/seller/products/new?error=server_error')
+
+    @http.route('/my/seller/products/<int:product_id>', type='http', auth='user', website=True)
+    def seller_product_detail(self, product_id, **kw):
+        """View/Edit product detail"""
+        seller = self._get_current_seller()
+        
+        if not seller:
+            return request.redirect('/my/seller/register')
+        
+        product = request.env['product.template'].sudo().browse(product_id)
+        
+        if not product.exists() or product.seller_id.id != seller.id:
+            return request.redirect('/my/seller/products')
+        
+        categories = request.env['marketplace.category'].sudo().search([
+            ('active', '=', True)
+        ], order='complete_name')
+        
+        values = {
+            'page_name': 'seller_product_detail',
+            'seller': seller,
+            'product': product,
+            'categories': categories,
+            'success': kw.get('success'),
+            'error': kw.get('error'),
+        }
+        
+        return request.render('smart_ecommerce_extension.seller_product_detail', values)
+
+    @http.route('/my/seller/products/<int:product_id>/update', type='http', auth='user', website=True, methods=['POST'])
+    def seller_product_update(self, product_id, **kw):
+        """Update product"""
+        import base64
+        
+        seller = self._get_current_seller()
+        
+        if not seller:
+            return request.redirect('/my/seller/register')
+        
+        product = request.env['product.template'].sudo().browse(product_id)
+        
+        if not product.exists() or product.seller_id.id != seller.id:
+            return request.redirect('/my/seller/products')
+        
+        try:
+            vals = {
+                'name': kw.get('name', product.name),
+                'list_price': float(kw.get('list_price', product.list_price)),
+                'description_sale': kw.get('description', ''),
+                'brand': kw.get('brand', ''),
+                'product_model': kw.get('product_model', ''),
+                'seller_sku': kw.get('seller_sku', ''),
+                'product_condition': kw.get('product_condition', 'new'),
+                'warranty_months': int(kw.get('warranty_months', 0)),
+            }
+            
+            # Handle image upload
+            if kw.get('image'):
+                file_obj = kw.get('image')
+                if hasattr(file_obj, 'read'):
+                    content = file_obj.read()
+                    if content:
+                        vals['image_1920'] = base64.b64encode(content)
+            
+            # Handle categories
+            if 'marketplace_categ_ids' in kw:
+                categ_ids = [int(c) for c in request.httprequest.form.getlist('marketplace_categ_ids')]
+                vals['marketplace_categ_ids'] = [(6, 0, categ_ids)]
+            
+            # If product was rejected, reset to draft on update
+            if product.product_state == 'rejected':
+                vals['product_state'] = 'draft'
+                vals['rejection_reason'] = False
+            
+            product.write(vals)
+            
+            return request.redirect('/my/seller/products/%s?success=updated' % product.id)
+            
+        except Exception as e:
+            _logger.error(f"Product update error: {str(e)}", exc_info=True)
+            return request.redirect('/my/seller/products/%s?error=update_failed' % product.id)
+
+    @http.route('/my/seller/products/<int:product_id>/submit', type='http', auth='user', website=True, methods=['POST'])
+    def seller_product_submit(self, product_id, **kw):
+        """Submit product for approval"""
+        seller = self._get_current_seller()
+        
+        if not seller:
+            return request.redirect('/my/seller/register')
+        
+        product = request.env['product.template'].sudo().browse(product_id)
+        
+        if not product.exists() or product.seller_id.id != seller.id:
+            return request.redirect('/my/seller/products')
+        
+        try:
+            product.action_submit_for_approval()
+            return request.redirect('/my/seller/products/%s?success=submitted' % product.id)
+        except Exception as e:
+            _logger.error(f"Product submit error: {str(e)}", exc_info=True)
+            return request.redirect('/my/seller/products/%s?error=%s' % (product.id, str(e)))
 
     # ==========================================
     # SELLER COMMISSIONS VIEW

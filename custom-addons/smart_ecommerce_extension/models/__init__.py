@@ -7,4 +7,5 @@ from . import sale_order
 from . import analytics
 from . import marketplace_seller
 from . import seller_commission
+from . import marketplace_category
 

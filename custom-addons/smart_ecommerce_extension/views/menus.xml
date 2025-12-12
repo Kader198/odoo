@@ -164,6 +164,37 @@
         parent="menu_smart_commissions"
         action="action_seller_commission_payouts"
         sequence="40"/>
+
+    <!-- ============================================================ -->
+    <!-- PRODUCTS MENU -->
+    <!-- ============================================================ -->
+
+    <menuitem
+        id="menu_smart_products"
+        name="Products"
+        parent="menu_smart_ecommerce_root"
+        sequence="4"/>
+
+    <menuitem
+        id="menu_smart_products_all"
+        name="All Marketplace Products"
+        parent="menu_smart_products"
+        action="action_marketplace_products"
+        sequence="10"/>
+
+    <menuitem
+        id="menu_smart_products_pending"
+        name="Pending Approval"
+        parent="menu_smart_products"
+        action="action_product_pending_approval"
+        sequence="20"/>
+
+    <menuitem
+        id="menu_smart_marketplace_categories"
+        name="Marketplace Categories"
+        parent="menu_smart_products"
+        action="action_marketplace_categories"
+        sequence="30"/>
     
     <!-- ============================================================ -->
     <!-- CATEGORIES SECTION -->

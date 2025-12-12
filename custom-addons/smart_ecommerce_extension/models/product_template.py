@@ -9,6 +9,10 @@ from datetime import timedelta
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
 
+    # ==========================================
+    # SELLER ATTRIBUTION
+    # ==========================================
+    
     # Seller relationship - links product to marketplace seller
     seller_id = fields.Many2one(
         'marketplace.seller',
@@ -29,6 +33,91 @@ class ProductTemplate(models.Model):
         related='seller_id.can_do_commercial_actions',
         readonly=True,
         help='Indicates if the seller is approved and KYC verified',
+    )
+    
+    # ==========================================
+    # PRODUCT PUBLICATION WORKFLOW
+    # ==========================================
+    
+    product_state = fields.Selection([
+        ('draft', 'Draft'),
+        ('pending', 'Pending Approval'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('archived', 'Archived'),
+    ], string='Product Status', default='draft', required=True, tracking=True, index=True,
+       help='Product publication workflow state')
+    
+    rejection_reason = fields.Text(string='Rejection Reason', tracking=True)
+    
+    # Approval tracking
+    submitted_date = fields.Datetime(string='Submitted Date', readonly=True)
+    approved_date = fields.Datetime(string='Approved Date', readonly=True)
+    approved_by = fields.Many2one('res.users', string='Approved By', readonly=True)
+    
+    # Admin notes for review
+    admin_review_notes = fields.Text(
+        string='Admin Notes',
+        groups='sales_team.group_sale_manager',
+        help='Internal notes for admin review',
+    )
+    
+    # Marketplace categories
+    marketplace_categ_ids = fields.Many2many(
+        'marketplace.category',
+        'product_template_marketplace_categ_rel',
+        'product_id',
+        'category_id',
+        string='Marketplace Categories',
+        help='Categories specific to the marketplace',
+    )
+    
+    # Featured/highlighted product
+    is_featured = fields.Boolean(
+        string='Featured Product',
+        default=False,
+        help='Show in featured products sections',
+    )
+    featured_start_date = fields.Date(string='Featured Start')
+    featured_end_date = fields.Date(string='Featured End')
+    
+    # Seller SKU (seller's own product code)
+    seller_sku = fields.Char(
+        string='Seller SKU',
+        index=True,
+        help="Seller's own product reference code",
+    )
+    
+    # Condition for used/refurbished products
+    product_condition = fields.Selection([
+        ('new', 'New'),
+        ('like_new', 'Like New'),
+        ('very_good', 'Very Good'),
+        ('good', 'Good'),
+        ('acceptable', 'Acceptable'),
+        ('refurbished', 'Refurbished'),
+    ], string='Condition', default='new')
+    
+    # Warranty
+    warranty_months = fields.Integer(string='Warranty (months)', default=0)
+    warranty_description = fields.Text(string='Warranty Details')
+    
+    # Return policy override
+    return_days = fields.Integer(string='Return Period (days)', default=14)
+    return_policy = fields.Text(string='Return Policy')
+    
+    # Stock management per seller
+    seller_stock_location_id = fields.Many2one(
+        'stock.location',
+        string='Seller Stock Location',
+        compute='_compute_seller_stock_location',
+        store=False,
+        help='Stock location for this seller',
+    )
+    seller_available_qty = fields.Float(
+        string='Seller Available Qty',
+        compute='_compute_seller_stock',
+        digits='Product Unit of Measure',
     )
     
     # Brand and Model fields
@@ -110,46 +199,204 @@ class ProductTemplate(models.Model):
             else:
                 product.availability_status = 'in_stock'
 
+    def _compute_seller_stock_location(self):
+        """Get stock location for the seller"""
+        for product in self:
+            if product.seller_id and product.seller_id.stock_location_id:
+                product.seller_stock_location_id = product.seller_id.stock_location_id
+            else:
+                product.seller_stock_location_id = False
+
+    def _compute_seller_stock(self):
+        """Compute available quantity at seller's stock location"""
+        for product in self:
+            if product.seller_id and product.seller_id.stock_location_id:
+                # Get stock quant for seller's location
+                quants = self.env['stock.quant'].search([
+                    ('product_id', 'in', product.product_variant_ids.ids),
+                    ('location_id', '=', product.seller_id.stock_location_id.id),
+                ])
+                product.seller_available_qty = sum(quants.mapped('quantity'))
+            else:
+                product.seller_available_qty = product.qty_available
+
     # ==========================================
-    # KYC ENFORCEMENT FOR PUBLISHING
+    # PRODUCT WORKFLOW ACTIONS
     # ==========================================
 
-    @api.constrains('is_published', 'seller_id')
-    def _check_seller_kyc_for_publishing(self):
+    def action_submit_for_approval(self):
+        """Submit product for admin approval"""
+        for product in self:
+            if product.product_state != 'draft':
+                raise UserError(_('Only draft products can be submitted for approval.'))
+            
+            # Check if seller is assigned for marketplace products
+            if product.seller_id and not product.seller_id.can_do_commercial_actions:
+                raise UserError(_(
+                    'Cannot submit product for approval.\n'
+                    'The seller "%(seller)s" must be approved and KYC verified first.'
+                ) % {'seller': product.seller_id.company_name})
+            
+            # Validate required fields
+            if not product.name:
+                raise UserError(_('Product name is required.'))
+            if product.list_price <= 0:
+                raise UserError(_('Product price must be greater than 0.'))
+            
+            product.write({
+                'product_state': 'pending',
+                'submitted_date': fields.Datetime.now(),
+            })
+            
+            # Notify admins
+            product._notify_admin_new_product()
+        
+        return True
+
+    def action_approve_product(self):
+        """Approve product for publication"""
+        for product in self:
+            if product.product_state != 'pending':
+                raise UserError(_('Only pending products can be approved.'))
+            
+            product.write({
+                'product_state': 'approved',
+                'approved_date': fields.Datetime.now(),
+                'approved_by': self.env.user.id,
+                'rejection_reason': False,
+            })
+            
+            # Notify seller
+            product._notify_seller_product_approved()
+        
+        return True
+
+    def action_reject_product(self):
+        """Open wizard to reject product with reason"""
+        self.ensure_one()
+        return {
+            'name': _('Reject Product'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'product.reject.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_product_id': self.id},
+        }
+
+    def action_set_to_draft(self):
+        """Reset product to draft state"""
+        for product in self:
+            product.write({
+                'product_state': 'draft',
+                'rejection_reason': False,
+            })
+        return True
+
+    def action_archive_product(self):
+        """Archive the product"""
+        for product in self:
+            product.write({
+                'product_state': 'archived',
+                'is_published': False,
+                'active': False,
+            })
+        return True
+
+    def action_unarchive_product(self):
+        """Unarchive the product"""
+        for product in self:
+            product.write({
+                'product_state': 'draft',
+                'active': True,
+            })
+        return True
+
+    def _notify_admin_new_product(self):
+        """Send notification to admins about new product submission"""
+        self.ensure_one()
+        template = self.env.ref('smart_ecommerce_extension.email_admin_new_product', raise_if_not_found=False)
+        if template:
+            # Get sale managers
+            managers = self.env['res.users'].search([
+                ('groups_id', 'in', self.env.ref('sales_team.group_sale_manager').id)
+            ])
+            for manager in managers[:3]:  # Limit to 3 managers
+                template.send_mail(self.id, email_values={'email_to': manager.email})
+
+    def _notify_seller_product_approved(self):
+        """Send notification to seller when product is approved"""
+        self.ensure_one()
+        if self.seller_id and self.seller_id.user_id:
+            template = self.env.ref('smart_ecommerce_extension.email_seller_product_approved', raise_if_not_found=False)
+            if template:
+                template.send_mail(self.id)
+
+    # ==========================================
+    # KYC & WORKFLOW ENFORCEMENT FOR PUBLISHING
+    # ==========================================
+
+    @api.constrains('is_published', 'seller_id', 'product_state')
+    def _check_publishing_constraints(self):
         """
-        Prevent publishing products if seller's KYC is not verified.
-        This is the core enforcement mechanism for KYC requirements.
+        Prevent publishing products if:
+        1. Seller's KYC is not verified
+        2. Product is not approved by admin
         """
         for product in self:
-            if product.is_published and product.seller_id:
-                if not product.seller_id.can_do_commercial_actions:
-                    if product.seller_id.state != 'approved':
-                        raise ValidationError(_(
-                            'Cannot publish product "%(product)s".\n'
-                            'The seller account "%(seller)s" is not approved yet.\n'
-                            'Current status: %(status)s'
-                        ) % {
-                            'product': product.name,
-                            'seller': product.seller_id.company_name,
-                            'status': dict(product.seller_id._fields['state'].selection).get(
-                                product.seller_id.state, product.seller_id.state
-                            ),
-                        })
-                    else:
-                        raise ValidationError(_(
-                            'Cannot publish product "%(product)s".\n'
-                            'The seller "%(seller)s" must complete KYC verification first.\n'
-                            'Please upload KYC documents and wait for verification.'
-                        ) % {
-                            'product': product.name,
-                            'seller': product.seller_id.company_name,
-                        })
+            if product.is_published:
+                # Check product approval state
+                if product.product_state != 'approved':
+                    raise ValidationError(_(
+                        'Cannot publish product "%(product)s".\n'
+                        'The product must be approved by admin first.\n'
+                        'Current status: %(status)s'
+                    ) % {
+                        'product': product.name,
+                        'status': dict(product._fields['product_state'].selection).get(
+                            product.product_state, product.product_state
+                        ),
+                    })
+                
+                # Check seller KYC
+                if product.seller_id:
+                    if not product.seller_id.can_do_commercial_actions:
+                        if product.seller_id.state != 'approved':
+                            raise ValidationError(_(
+                                'Cannot publish product "%(product)s".\n'
+                                'The seller account "%(seller)s" is not approved yet.\n'
+                                'Current status: %(status)s'
+                            ) % {
+                                'product': product.name,
+                                'seller': product.seller_id.company_name,
+                                'status': dict(product.seller_id._fields['state'].selection).get(
+                                    product.seller_id.state, product.seller_id.state
+                                ),
+                            })
+                        else:
+                            raise ValidationError(_(
+                                'Cannot publish product "%(product)s".\n'
+                                'The seller "%(seller)s" must complete KYC verification first.\n'
+                                'Please upload KYC documents and wait for verification.'
+                            ) % {
+                                'product': product.name,
+                                'seller': product.seller_id.company_name,
+                            })
 
     def write(self, vals):
-        """Override write to check KYC before publishing"""
+        """Override write to check KYC and product state before publishing"""
         # Check if trying to publish
         if vals.get('is_published'):
             for product in self:
+                # Check product state
+                product_state = vals.get('product_state', product.product_state)
+                if product_state != 'approved':
+                    raise UserError(_(
+                        'Cannot publish product "%(product)s".\n'
+                        'The product must be approved by admin first.\n'
+                        'Please submit for approval and wait for review.'
+                    ) % {'product': product.name})
+                
+                # Check seller KYC
                 if product.seller_id and not product.seller_id.can_do_commercial_actions:
                     raise UserError(_(
                         'Cannot publish product "%(product)s".\n'
@@ -164,24 +411,29 @@ class ProductTemplate(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        """Override create to prevent publishing products for non-verified sellers"""
+        """Override create to prevent publishing products without approval"""
         for vals in vals_list:
-            if vals.get('is_published') and vals.get('seller_id'):
-                seller = self.env['marketplace.seller'].browse(vals['seller_id'])
-                if seller.exists() and not seller.can_do_commercial_actions:
-                    raise UserError(_(
-                        'Cannot create and publish product for seller "%(seller)s".\n'
-                        'The seller must be approved and KYC verified first.\n\n'
-                        '%(status_message)s'
-                    ) % {
-                        'seller': seller.company_name,
-                        'status_message': seller.commercial_status_message or '',
-                    })
+            # Cannot create and directly publish
+            if vals.get('is_published'):
+                raise UserError(_(
+                    'Cannot create and directly publish a product.\n'
+                    'Please create the product first, then submit for admin approval.'
+                ))
+            
+            # Set default product_state
+            if 'product_state' not in vals:
+                vals['product_state'] = 'draft'
+        
         return super().create(vals_list)
 
     def action_publish(self):
-        """Action to publish product - checks KYC first"""
+        """Action to publish product - checks approval and KYC first"""
         for product in self:
+            if product.product_state != 'approved':
+                raise UserError(_(
+                    'Cannot publish product "%(product)s".\n'
+                    'The product must be approved by admin first.'
+                ) % {'product': product.name})
             if product.seller_id:
                 product.seller_id.ensure_can_do_commercial_actions()
         return self.write({'is_published': True})
@@ -189,6 +441,21 @@ class ProductTemplate(models.Model):
     def action_unpublish(self):
         """Action to unpublish product"""
         return self.write({'is_published': False})
+
+    def action_quick_approve_and_publish(self):
+        """Admin action to approve and publish in one step"""
+        for product in self:
+            if product.seller_id and not product.seller_id.can_do_commercial_actions:
+                raise UserError(_(
+                    'Cannot publish product. Seller KYC verification is required.'
+                ))
+            product.write({
+                'product_state': 'approved',
+                'approved_date': fields.Datetime.now(),
+                'approved_by': self.env.user.id,
+                'is_published': True,
+            })
+        return True
 
     def get_availability_badge_class(self):
         """Return CSS class for availability badge"""

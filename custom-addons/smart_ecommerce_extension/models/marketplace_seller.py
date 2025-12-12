@@ -199,6 +199,35 @@ class MarketplaceSeller(models.Model):
     terms_accepted = fields.Boolean(string='Terms Accepted', default=False)
     terms_accepted_date = fields.Datetime(string='Terms Accepted Date', readonly=True)
     
+    # ==========================================
+    # STOCK MANAGEMENT
+    # ==========================================
+    
+    stock_location_id = fields.Many2one(
+        'stock.location',
+        string='Stock Location',
+        help='Dedicated stock location for this seller',
+    )
+    warehouse_id = fields.Many2one(
+        'stock.warehouse',
+        string='Warehouse',
+        help='Warehouse assigned to this seller',
+    )
+    
+    # Statistics for products
+    pending_products_count = fields.Integer(
+        string='Pending Products',
+        compute='_compute_product_statistics',
+    )
+    approved_products_count = fields.Integer(
+        string='Approved Products',
+        compute='_compute_product_statistics',
+    )
+    published_products_count = fields.Integer(
+        string='Published Products',
+        compute='_compute_product_statistics',
+    )
+    
     # KYC Documents (new system)
     kyc_document_ids = fields.One2many(
         'marketplace.seller.kyc.document',
@@ -381,7 +410,7 @@ class MarketplaceSeller(models.Model):
         for seller in self:
             # Product count - from One2many relationship
             seller.product_count = len(seller.product_ids)
-            
+
             # Order statistics - orders containing seller's products
             if seller.product_ids:
                 product_variant_ids = seller.product_ids.mapped('product_variant_ids').ids
@@ -390,7 +419,7 @@ class MarketplaceSeller(models.Model):
                     ('state', 'in', ['sale', 'done']),
                 ])
                 seller.order_count = len(orders)
-                
+
                 # Calculate total sales from order lines with seller's products
                 order_lines = self.env['sale.order.line'].sudo().search([
                     ('order_id', 'in', orders.ids),
@@ -400,6 +429,75 @@ class MarketplaceSeller(models.Model):
             else:
                 seller.order_count = 0
                 seller.total_sales = 0.0
+
+    def _compute_product_statistics(self):
+        """Compute product statistics by state"""
+        for seller in self:
+            products = seller.product_ids
+            seller.pending_products_count = len(products.filtered(lambda p: p.product_state == 'pending'))
+            seller.approved_products_count = len(products.filtered(lambda p: p.product_state == 'approved'))
+            seller.published_products_count = len(products.filtered(lambda p: p.is_published))
+
+    def _create_stock_location(self):
+        """Create a dedicated stock location for the seller"""
+        self.ensure_one()
+        if self.stock_location_id:
+            return self.stock_location_id
+        
+        # Get or create sellers parent location
+        parent_location = self.env['stock.location'].search([
+            ('name', '=', 'Marketplace Sellers'),
+            ('usage', '=', 'view'),
+        ], limit=1)
+        
+        if not parent_location:
+            # Get main stock location as parent
+            stock_location = self.env.ref('stock.stock_location_stock', raise_if_not_found=False)
+            parent_location = self.env['stock.location'].sudo().create({
+                'name': 'Marketplace Sellers',
+                'usage': 'view',
+                'location_id': stock_location.id if stock_location else False,
+            })
+        
+        # Create seller's location
+        location = self.env['stock.location'].sudo().create({
+            'name': f'{self.company_name} Stock',
+            'usage': 'internal',
+            'location_id': parent_location.id,
+        })
+        
+        self.stock_location_id = location
+        return location
+
+    def action_create_stock_location(self):
+        """Action to create stock location for seller"""
+        for seller in self:
+            seller._create_stock_location()
+        return True
+
+    def action_view_products(self):
+        """Open products list for this seller"""
+        self.ensure_one()
+        return {
+            'name': _('Products - %s') % self.company_name,
+            'type': 'ir.actions.act_window',
+            'res_model': 'product.template',
+            'view_mode': 'kanban,list,form',
+            'domain': [('seller_id', '=', self.id)],
+            'context': {'default_seller_id': self.id},
+        }
+
+    def action_view_pending_products(self):
+        """Open pending products for this seller"""
+        self.ensure_one()
+        return {
+            'name': _('Pending Products - %s') % self.company_name,
+            'type': 'ir.actions.act_window',
+            'res_model': 'product.template',
+            'view_mode': 'list,form',
+            'domain': [('seller_id', '=', self.id), ('product_state', '=', 'pending')],
+            'context': {'default_seller_id': self.id},
+        }
 
     @api.constrains('commission_rate')
     def _check_commission_rate(self):
