@@ -1,0 +1,350 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- ============================================================ -->
+        <!-- SELLER EMAIL TEMPLATES -->
+        <!-- ============================================================ -->
+
+        <!-- Email: New Seller Registration - Admin Notification -->
+        <record id="email_admin_new_seller_registration" model="mail.template">
+            <field name="name">Seller: New Registration (Admin Notification)</field>
+            <field name="model_id" ref="smart_marketplace_core.model_marketplace_seller"/>
+            <field name="subject">New Seller Registration: {{ object.company_name }}</field>
+            <field name="email_from">{{ (object.company_id.email or user.email_formatted) }}</field>
+            <field name="email_to">{{ ctx.get('admin_email', '') }}</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px; font-size: 13px;">
+    <table border="0" width="100%" cellpadding="0" bgcolor="#ededed" style="padding: 20px; background-color: #ededed; border-collapse:collapse;">
+        <tr>
+            <td valign="top" style="padding: 10px;">
+                <table width="600" border="0" cellpadding="0" bgcolor="#ffffff" style="margin: 0 auto; background-color: #ffffff; border: 1px solid #e1e1e1; border-radius: 8px;">
+                    <tr>
+                        <td style="padding: 20px 30px; background: linear-gradient(135deg, #714B67 0%, #9B6A8F 100%); border-radius: 8px 8px 0 0;">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 24px;">New Seller Registration</h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 30px;">
+                            <p style="margin: 0 0 20px;">A new seller has registered and is awaiting review:</p>
+                            
+                            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                                <tr>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold; width: 150px;">Store Name:</td>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee;">{{ object.company_name }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">Contact:</td>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee;">{{ object.email }} | {{ object.phone or 'N/A' }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">Location:</td>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee;">{{ object.city or 'N/A' }}, {{ object.country_id.name or 'N/A' }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">Business Type:</td>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee;">{{ object.business_type or 'N/A' }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">KYC Documents:</td>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee;">
+                                        {{ len(object.kyc_document_ids) }} document(s) uploaded
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px; font-weight: bold;">Registration Date:</td>
+                                    <td style="padding: 10px;">{{ object.registration_date }}</td>
+                                </tr>
+                            </table>
+                            
+                            <div style="text-align: center; margin-top: 30px;">
+                                <a href="{{ object.env['ir.config_parameter'].sudo().get_param('web.base.url') }}/web#id={{ object.id }}&amp;model=marketplace.seller&amp;view_type=form"
+                                   style="display: inline-block; padding: 12px 30px; background: #714B67; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                                    Review Application
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 20px 30px; background-color: #f8f9fa; border-radius: 0 0 8px 8px; text-align: center; color: #666;">
+                            <small>This is an automated notification from the marketplace system.</small>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</div>
+            </field>
+        </record>
+
+        <!-- Email: Seller Submission Confirmation -->
+        <record id="email_seller_submission_confirmation" model="mail.template">
+            <field name="name">Seller: Application Submitted Confirmation</field>
+            <field name="model_id" ref="smart_marketplace_core.model_marketplace_seller"/>
+            <field name="subject">Application Received - {{ object.company_name }}</field>
+            <field name="email_from">{{ (object.company_id.email or user.email_formatted) }}</field>
+            <field name="email_to">{{ object.email }}</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px; font-size: 13px;">
+    <table border="0" width="100%" cellpadding="0" bgcolor="#ededed" style="padding: 20px; background-color: #ededed; border-collapse:collapse;">
+        <tr>
+            <td valign="top" style="padding: 10px;">
+                <table width="600" border="0" cellpadding="0" bgcolor="#ffffff" style="margin: 0 auto; background-color: #ffffff; border: 1px solid #e1e1e1; border-radius: 8px;">
+                    <tr>
+                        <td style="padding: 20px 30px; background: linear-gradient(135deg, #714B67 0%, #9B6A8F 100%); border-radius: 8px 8px 0 0;">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Application Received!</h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 30px;">
+                            <p>Dear {{ object.user_id.name or object.company_name }},</p>
+                            
+                            <p>Thank you for submitting your seller application for <strong>{{ object.company_name }}</strong>!</p>
+                            
+                            <p>Your application has been received and is now under review by our team.</p>
+                            
+                            <div style="background-color: #e3f2fd; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                                <h3 style="margin: 0 0 10px; color: #1976d2;">What happens next?</h3>
+                                <ol style="margin: 0; padding-left: 20px;">
+                                    <li>Our team will review your application and documents</li>
+                                    <li>We may contact you if additional information is needed</li>
+                                    <li>You'll receive an email notification once the review is complete</li>
+                                </ol>
+                                <p style="margin: 10px 0 0; color: #666;"><em>Review typically takes 1-3 business days.</em></p>
+                            </div>
+                            
+                            <p>In the meantime, you can check your application status in your seller dashboard.</p>
+                            
+                            <div style="text-align: center; margin-top: 30px;">
+                                <a href="{{ object.env['ir.config_parameter'].sudo().get_param('web.base.url') }}/my/seller/dashboard"
+                                   style="display: inline-block; padding: 12px 30px; background: #714B67; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                                    View Dashboard
+                                </a>
+                            </div>
+                            
+                            <p style="margin-top: 30px;">Best regards,<br/>The Marketplace Team</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</div>
+            </field>
+        </record>
+
+        <!-- Email: Seller Approved -->
+        <record id="email_seller_approved" model="mail.template">
+            <field name="name">Seller: Application Approved</field>
+            <field name="model_id" ref="smart_marketplace_core.model_marketplace_seller"/>
+            <field name="subject">🎉 Congratulations! Your Seller Account is Approved</field>
+            <field name="email_from">{{ (object.company_id.email or user.email_formatted) }}</field>
+            <field name="email_to">{{ object.email }}</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px; font-size: 13px;">
+    <table border="0" width="100%" cellpadding="0" bgcolor="#ededed" style="padding: 20px; background-color: #ededed; border-collapse:collapse;">
+        <tr>
+            <td valign="top" style="padding: 10px;">
+                <table width="600" border="0" cellpadding="0" bgcolor="#ffffff" style="margin: 0 auto; background-color: #ffffff; border: 1px solid #e1e1e1; border-radius: 8px;">
+                    <tr>
+                        <td style="padding: 20px 30px; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); border-radius: 8px 8px 0 0;">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 24px;">🎉 Account Approved!</h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 30px;">
+                            <p>Dear {{ object.user_id.name or object.company_name }},</p>
+                            
+                            <p><strong>Great news!</strong> Your seller account for <strong>{{ object.company_name }}</strong> has been approved!</p>
+                            
+                            <p>You can now start adding products and selling on our marketplace.</p>
+                            
+                            <div style="background-color: #d4edda; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                                <h3 style="margin: 0 0 10px; color: #155724;">Get Started:</h3>
+                                <ol style="margin: 0; padding-left: 20px;">
+                                    <li>Log in to your seller dashboard</li>
+                                    <li>Add your first product</li>
+                                    <li>Set up your store profile</li>
+                                    <li>Start receiving orders!</li>
+                                </ol>
+                            </div>
+                            
+                            <div style="text-align: center; margin-top: 30px;">
+                                <a href="{{ object.env['ir.config_parameter'].sudo().get_param('web.base.url') }}/my/seller/dashboard"
+                                   style="display: inline-block; padding: 12px 30px; background: #28a745; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold; margin-right: 10px;">
+                                    Go to Dashboard
+                                </a>
+                                <a href="{{ object.env['ir.config_parameter'].sudo().get_param('web.base.url') }}/my/seller/products/new"
+                                   style="display: inline-block; padding: 12px 30px; background: #714B67; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                                    Add Your First Product
+                                </a>
+                            </div>
+                            
+                            <p style="margin-top: 30px;">Welcome to the marketplace!<br/>The Marketplace Team</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</div>
+            </field>
+        </record>
+
+        <!-- Email: Seller Rejected -->
+        <record id="email_seller_rejected" model="mail.template">
+            <field name="name">Seller: Application Rejected</field>
+            <field name="model_id" ref="smart_marketplace_core.model_marketplace_seller"/>
+            <field name="subject">Seller Application Status Update</field>
+            <field name="email_from">{{ (object.company_id.email or user.email_formatted) }}</field>
+            <field name="email_to">{{ object.email }}</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px; font-size: 13px;">
+    <table border="0" width="100%" cellpadding="0" bgcolor="#ededed" style="padding: 20px; background-color: #ededed; border-collapse:collapse;">
+        <tr>
+            <td valign="top" style="padding: 10px;">
+                <table width="600" border="0" cellpadding="0" bgcolor="#ffffff" style="margin: 0 auto; background-color: #ffffff; border: 1px solid #e1e1e1; border-radius: 8px;">
+                    <tr>
+                        <td style="padding: 20px 30px; background: #dc3545; border-radius: 8px 8px 0 0;">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Application Status Update</h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 30px;">
+                            <p>Dear {{ object.user_id.name or object.company_name }},</p>
+                            
+                            <p>We regret to inform you that your seller application for <strong>{{ object.company_name }}</strong> could not be approved at this time.</p>
+                            
+                            <div style="background-color: #f8d7da; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                                <h3 style="margin: 0 0 10px; color: #721c24;">Reason:</h3>
+                                <p style="margin: 0;">{{ object.rejection_reason or 'No specific reason provided.' }}</p>
+                            </div>
+                            
+                            <p>If you believe this was a mistake or would like to provide additional information, you can resubmit your application after addressing the concerns mentioned above.</p>
+                            
+                            <div style="text-align: center; margin-top: 30px;">
+                                <a href="{{ object.env['ir.config_parameter'].sudo().get_param('web.base.url') }}/seller/register"
+                                   style="display: inline-block; padding: 12px 30px; background: #714B67; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                                    Resubmit Application
+                                </a>
+                            </div>
+                            
+                            <p style="margin-top: 30px;">If you have any questions, please contact our support team.</p>
+                            
+                            <p>Best regards,<br/>The Marketplace Team</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</div>
+            </field>
+        </record>
+
+        <!-- Email: KYC Verified -->
+        <record id="email_kyc_verified" model="mail.template">
+            <field name="name">Seller: KYC Documents Verified</field>
+            <field name="model_id" ref="smart_marketplace_core.model_marketplace_seller"/>
+            <field name="subject">✓ KYC Verification Complete - {{ object.company_name }}</field>
+            <field name="email_from">{{ (object.company_id.email or user.email_formatted) }}</field>
+            <field name="email_to">{{ object.email }}</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px; font-size: 13px;">
+    <table border="0" width="100%" cellpadding="0" bgcolor="#ededed" style="padding: 20px; background-color: #ededed; border-collapse:collapse;">
+        <tr>
+            <td valign="top" style="padding: 10px;">
+                <table width="600" border="0" cellpadding="0" bgcolor="#ffffff" style="margin: 0 auto; background-color: #ffffff; border: 1px solid #e1e1e1; border-radius: 8px;">
+                    <tr>
+                        <td style="padding: 20px 30px; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); border-radius: 8px 8px 0 0;">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 24px;">✓ KYC Verification Complete</h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 30px;">
+                            <p>Dear {{ object.user_id.name or object.company_name }},</p>
+                            
+                            <p>Your KYC documents for <strong>{{ object.company_name }}</strong> have been verified successfully!</p>
+                            
+                            <div style="background-color: #d4edda; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+                                <span style="font-size: 48px;">✓</span>
+                                <h3 style="margin: 10px 0 0; color: #155724;">Identity Verified</h3>
+                            </div>
+                            
+                            <p>You now have full access to all seller features including:</p>
+                            <ul>
+                                <li>Publishing and managing products</li>
+                                <li>Receiving and fulfilling orders</li>
+                                <li>Accessing analytics and reports</li>
+                            </ul>
+                            
+                            <div style="text-align: center; margin-top: 30px;">
+                                <a href="{{ object.env['ir.config_parameter'].sudo().get_param('web.base.url') }}/my/seller/dashboard"
+                                   style="display: inline-block; padding: 12px 30px; background: #714B67; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                                    Go to Dashboard
+                                </a>
+                            </div>
+                            
+                            <p style="margin-top: 30px;">Happy selling!<br/>The Marketplace Team</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</div>
+            </field>
+        </record>
+
+        <!-- Email: KYC Rejected -->
+        <record id="email_kyc_rejected" model="mail.template">
+            <field name="name">Seller: KYC Documents Rejected</field>
+            <field name="model_id" ref="smart_marketplace_core.model_marketplace_seller"/>
+            <field name="subject">KYC Verification - Action Required</field>
+            <field name="email_from">{{ (object.company_id.email or user.email_formatted) }}</field>
+            <field name="email_to">{{ object.email }}</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px; font-size: 13px;">
+    <table border="0" width="100%" cellpadding="0" bgcolor="#ededed" style="padding: 20px; background-color: #ededed; border-collapse:collapse;">
+        <tr>
+            <td valign="top" style="padding: 10px;">
+                <table width="600" border="0" cellpadding="0" bgcolor="#ffffff" style="margin: 0 auto; background-color: #ffffff; border: 1px solid #e1e1e1; border-radius: 8px;">
+                    <tr>
+                        <td style="padding: 20px 30px; background: #ffc107; border-radius: 8px 8px 0 0;">
+                            <h1 style="color: #212529; margin: 0; font-size: 24px;">⚠️ KYC Verification - Action Required</h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 30px;">
+                            <p>Dear {{ object.user_id.name or object.company_name }},</p>
+                            
+                            <p>Unfortunately, we were unable to verify your KYC documents for <strong>{{ object.company_name }}</strong>.</p>
+                            
+                            <div style="background-color: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                                <h3 style="margin: 0 0 10px; color: #856404;">Reason:</h3>
+                                <p style="margin: 0;">{{ object.kyc_rejection_reason or 'Please ensure your documents are clear and valid.' }}</p>
+                            </div>
+                            
+                            <p>Please review the feedback above and upload new documents that address the concerns.</p>
+                            
+                            <div style="text-align: center; margin-top: 30px;">
+                                <a href="{{ object.env['ir.config_parameter'].sudo().get_param('web.base.url') }}/my/seller/documents"
+                                   style="display: inline-block; padding: 12px 30px; background: #714B67; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                                    Upload New Documents
+                                </a>
+                            </div>
+                            
+                            <p style="margin-top: 30px;">If you have any questions, please contact our support team.</p>
+                            
+                            <p>Best regards,<br/>The Marketplace Team</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</div>
+            </field>
+        </record>
+    </data>
+</odoo>

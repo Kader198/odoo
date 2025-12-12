@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- ============================================================ -->
+        <!-- DEFAULT KYC DOCUMENT TYPES -->
+        <!-- ============================================================ -->
+
+        <record id="kyc_doc_type_national_id" model="marketplace.seller.kyc.document.type">
+            <field name="name">National ID / Passport</field>
+            <field name="code">national_id</field>
+            <field name="sequence">10</field>
+            <field name="required">True</field>
+            <field name="description">Please upload a clear copy of your government-issued ID card or passport. The document must be valid and not expired. Both sides should be visible if applicable.</field>
+        </record>
+
+        <record id="kyc_doc_type_business_license" model="marketplace.seller.kyc.document.type">
+            <field name="name">Business Registration / License</field>
+            <field name="code">business_license</field>
+            <field name="sequence">20</field>
+            <field name="required">False</field>
+            <field name="description">If you're selling as a company, please upload your business registration certificate or commercial license. Not required for individual sellers.</field>
+        </record>
+
+        <record id="kyc_doc_type_address_proof" model="marketplace.seller.kyc.document.type">
+            <field name="name">Proof of Address</field>
+            <field name="code">address_proof</field>
+            <field name="sequence">30</field>
+            <field name="required">False</field>
+            <field name="description">A recent utility bill, bank statement, or official letter showing your name and address. Must be issued within the last 3 months.</field>
+        </record>
+
+        <record id="kyc_doc_type_tax_certificate" model="marketplace.seller.kyc.document.type">
+            <field name="name">Tax Registration Certificate</field>
+            <field name="code">tax_certificate</field>
+            <field name="sequence">40</field>
+            <field name="required">False</field>
+            <field name="description">Your tax identification certificate or VAT registration document, if applicable.</field>
+        </record>
+
+        <record id="kyc_doc_type_bank_statement" model="marketplace.seller.kyc.document.type">
+            <field name="name">Bank Account Statement</field>
+            <field name="code">bank_statement</field>
+            <field name="sequence">50</field>
+            <field name="required">False</field>
+            <field name="description">A recent bank statement showing your account details for payout verification. Account number should match the one provided in your profile.</field>
+        </record>
+
+    </data>
+</odoo>

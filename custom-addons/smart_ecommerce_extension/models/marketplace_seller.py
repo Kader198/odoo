@@ -173,6 +173,57 @@ class MarketplaceSeller(models.Model):
     )
     
     active = fields.Boolean(default=True)
+    
+    # ==========================================
+    # REGISTRATION FIELDS
+    # ==========================================
+    
+    # Registration source tracking
+    registration_source = fields.Selection([
+        ('backend', 'Backend'),
+        ('website', 'Website Registration'),
+        ('api', 'API'),
+    ], string='Registration Source', default='backend', readonly=True)
+    registration_date = fields.Datetime(string='Registration Date', default=fields.Datetime.now, readonly=True)
+    registration_ip = fields.Char(string='Registration IP', readonly=True)
+    
+    # Additional registration fields
+    business_type = fields.Selection([
+        ('individual', 'Individual / Sole Proprietor'),
+        ('company', 'Company / Corporation'),
+        ('partnership', 'Partnership'),
+        ('other', 'Other'),
+    ], string='Business Type', default='individual')
+    
+    # Terms acceptance
+    terms_accepted = fields.Boolean(string='Terms Accepted', default=False)
+    terms_accepted_date = fields.Datetime(string='Terms Accepted Date', readonly=True)
+    
+    # KYC Documents (new system)
+    kyc_document_ids = fields.One2many(
+        'marketplace.seller.kyc.document',
+        'seller_id',
+        string='KYC Documents',
+    )
+    kyc_documents_complete = fields.Boolean(
+        string='All Required Documents Submitted',
+        compute='_compute_kyc_documents_status',
+        store=True,
+    )
+    kyc_documents_approved = fields.Boolean(
+        string='All Required Documents Approved',
+        compute='_compute_kyc_documents_status',
+        store=True,
+    )
+    kyc_pending_documents = fields.Integer(
+        string='Pending Documents',
+        compute='_compute_kyc_documents_status',
+    )
+    
+    # Admin review fields
+    admin_notes = fields.Text(string='Admin Notes', groups='sales_team.group_sale_manager')
+    last_review_date = fields.Datetime(string='Last Review Date', readonly=True)
+    last_reviewed_by = fields.Many2one('res.users', string='Last Reviewed By', readonly=True)
 
     _sql_constraints = [
         ('user_unique', 'UNIQUE(user_id)', 'A user can only have one seller account!'),
@@ -240,29 +291,65 @@ class MarketplaceSeller(models.Model):
             else:
                 seller.name = _('New Seller')
 
-    @api.depends('state', 'kyc_verified')
+    @api.depends('state', 'kyc_verified', 'kyc_documents_approved')
     def _compute_can_do_commercial_actions(self):
         """
         Compute whether seller can perform commercial actions.
-        Requires BOTH state='approved' AND kyc_verified=True.
+        Requires BOTH state='approved' AND KYC verified (either legacy or new document system).
         """
         for seller in self:
+            kyc_ok = seller.kyc_verified or seller.kyc_documents_approved
             seller.can_do_commercial_actions = (
-                seller.state == 'approved' and seller.kyc_verified
+                seller.state == 'approved' and kyc_ok
             )
+    
+    def _check_kyc_completion(self):
+        """Check if all required KYC documents are approved and auto-verify if so"""
+        self.ensure_one()
+        if self.kyc_documents_approved and not self.kyc_verified:
+            self.write({
+                'kyc_verified': True,
+                'kyc_verified_date': fields.Date.today(),
+                'kyc_verified_by': self.env.user.id,
+                'kyc_rejection_reason': False,
+            })
+            self.message_post(body=_('KYC automatically verified - all required documents approved.'))
 
-    @api.depends('kyc_doc', 'kyc_verified', 'kyc_rejection_reason')
+    @api.depends('kyc_doc', 'kyc_verified', 'kyc_rejection_reason', 'kyc_documents_approved')
     def _compute_kyc_status(self):
         """Compute the KYC verification status"""
         for seller in self:
-            if seller.kyc_verified:
+            # Check new document system first
+            if seller.kyc_documents_approved or seller.kyc_verified:
                 seller.kyc_status = 'verified'
             elif seller.kyc_rejection_reason:
                 seller.kyc_status = 'rejected'
-            elif seller.kyc_doc:
+            elif seller.kyc_doc or seller.kyc_document_ids:
                 seller.kyc_status = 'pending'
             else:
                 seller.kyc_status = 'not_submitted'
+
+    @api.depends('kyc_document_ids', 'kyc_document_ids.state')
+    def _compute_kyc_documents_status(self):
+        """Compute KYC documents completion status"""
+        required_types = self.env['marketplace.seller.kyc.document.type'].search([('required', '=', True)])
+        required_type_ids = set(required_types.ids)
+        
+        for seller in self:
+            # Get submitted and approved document types
+            submitted_types = set(seller.kyc_document_ids.mapped('document_type_id').ids)
+            approved_docs = seller.kyc_document_ids.filtered(lambda d: d.state == 'approved')
+            approved_types = set(approved_docs.mapped('document_type_id').ids)
+            pending_docs = seller.kyc_document_ids.filtered(lambda d: d.state == 'pending')
+            
+            # Check if all required documents are submitted
+            seller.kyc_documents_complete = required_type_ids.issubset(submitted_types) if required_type_ids else bool(seller.kyc_document_ids)
+            
+            # Check if all required documents are approved
+            seller.kyc_documents_approved = required_type_ids.issubset(approved_types) if required_type_ids else bool(approved_docs)
+            
+            # Count pending documents
+            seller.kyc_pending_documents = len(pending_docs)
 
     @api.depends('state', 'kyc_verified', 'kyc_status')
     def _compute_commercial_status_message(self):
@@ -551,6 +638,21 @@ class MarketplaceSeller(models.Model):
             'target': 'current',
         }
 
+    def action_view_kyc_documents(self):
+        """View all KYC documents for this seller"""
+        self.ensure_one()
+        return {
+            'name': _('KYC Documents - %s') % self.company_name,
+            'type': 'ir.actions.act_window',
+            'res_model': 'marketplace.seller.kyc.document',
+            'view_mode': 'list,form',
+            'domain': [('seller_id', '=', self.id)],
+            'context': {
+                'default_seller_id': self.id,
+            },
+            'target': 'current',
+        }
+
     # ==========================================
     # PORTAL METHODS
     # ==========================================
@@ -718,5 +820,125 @@ class MarketplaceSellerKYCRejectWizard(models.TransientModel):
         if template:
             template.send_mail(self.seller_id.id, force_send=True)
         
+        return {'type': 'ir.actions.act_window_close'}
+
+
+# ============================================================
+# SELLER KYC DOCUMENT TYPES
+# ============================================================
+
+class SellerKYCDocumentType(models.Model):
+    _name = 'marketplace.seller.kyc.document.type'
+    _description = 'KYC Document Type'
+    _order = 'sequence, name'
+
+    name = fields.Char(string='Document Type', required=True, translate=True)
+    code = fields.Char(string='Code', required=True)
+    sequence = fields.Integer(string='Sequence', default=10)
+    required = fields.Boolean(string='Required', default=False,
+                              help='If checked, sellers must upload this document for KYC approval')
+    description = fields.Text(string='Description', translate=True,
+                              help='Instructions for the seller about this document')
+    active = fields.Boolean(default=True)
+
+    _sql_constraints = [
+        ('code_unique', 'UNIQUE(code)', 'Document type code must be unique!'),
+    ]
+
+
+class SellerKYCDocument(models.Model):
+    _name = 'marketplace.seller.kyc.document'
+    _description = 'Seller KYC Document'
+    _order = 'create_date desc'
+
+    name = fields.Char(string='Document Name', compute='_compute_name', store=True)
+    seller_id = fields.Many2one(
+        'marketplace.seller',
+        string='Seller',
+        required=True,
+        ondelete='cascade',
+        index=True,
+    )
+    document_type_id = fields.Many2one(
+        'marketplace.seller.kyc.document.type',
+        string='Document Type',
+        required=True,
+    )
+    file = fields.Binary(string='Document File', required=True, attachment=True)
+    filename = fields.Char(string='Filename')
+    state = fields.Selection([
+        ('pending', 'Pending Review'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ], string='Status', default='pending', required=True, tracking=True)
+    
+    # Review information
+    reviewed_by = fields.Many2one('res.users', string='Reviewed By', readonly=True)
+    reviewed_date = fields.Datetime(string='Review Date', readonly=True)
+    rejection_reason = fields.Text(string='Rejection Reason')
+    notes = fields.Text(string='Admin Notes')
+    
+    # Document metadata
+    upload_date = fields.Datetime(string='Upload Date', default=fields.Datetime.now, readonly=True)
+    expiry_date = fields.Date(string='Expiry Date', help='If applicable, document expiration date')
+
+    @api.depends('document_type_id', 'seller_id')
+    def _compute_name(self):
+        for doc in self:
+            if doc.document_type_id and doc.seller_id:
+                doc.name = f"{doc.seller_id.company_name} - {doc.document_type_id.name}"
+            else:
+                doc.name = _('New Document')
+
+    def action_approve(self):
+        """Approve the document"""
+        self.ensure_one()
+        self.write({
+            'state': 'approved',
+            'reviewed_by': self.env.user.id,
+            'reviewed_date': fields.Datetime.now(),
+            'rejection_reason': False,
+        })
+        self.seller_id.message_post(
+            body=_('Document "%s" approved by %s') % (self.document_type_id.name, self.env.user.name)
+        )
+        # Check if all required documents are now approved
+        self.seller_id._check_kyc_completion()
+
+    def action_reject(self):
+        """Open rejection wizard"""
+        return {
+            'name': _('Reject Document'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'marketplace.seller.kyc.document.reject.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_document_id': self.id},
+        }
+
+
+class SellerKYCDocumentRejectWizard(models.TransientModel):
+    _name = 'marketplace.seller.kyc.document.reject.wizard'
+    _description = 'Reject KYC Document Wizard'
+
+    document_id = fields.Many2one('marketplace.seller.kyc.document', required=True)
+    reason = fields.Text(string='Rejection Reason', required=True)
+
+    def action_reject(self):
+        """Reject the document with reason"""
+        self.ensure_one()
+        self.document_id.write({
+            'state': 'rejected',
+            'reviewed_by': self.env.user.id,
+            'reviewed_date': fields.Datetime.now(),
+            'rejection_reason': self.reason,
+        })
+        self.document_id.seller_id.message_post(
+            body=_('Document "%s" rejected by %s. Reason: %s') % (
+                self.document_id.document_type_id.name, 
+                self.env.user.name, 
+                self.reason
+            )
+        )
         return {'type': 'ir.actions.act_window_close'}
 

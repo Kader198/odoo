@@ -1,0 +1,453 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================================ -->
+    <!-- SELLER REGISTRATION TEMPLATES -->
+    <!-- ============================================================ -->
+
+    <!-- Become a Seller Landing Page -->
+    <template id="become_seller_landing" name="Become a Seller">
+        <t t-call="website.layout">
+            <t t-set="title">Become a Seller</t>
+            <div id="wrap" class="oe_structure">
+                <!-- Hero Section -->
+                <section class="py-5" style="background: linear-gradient(135deg, #714B67 0%, #9B6A8F 100%);">
+                    <div class="container text-center text-white py-5">
+                        <h1 class="display-4 fw-bold mb-3">Start Selling Today</h1>
+                        <p class="lead mb-4">Join our marketplace and reach thousands of customers. Easy setup, powerful tools, and dedicated support.</p>
+                        <a href="/seller/register" class="btn btn-light btn-lg px-5">
+                            <i class="fa fa-rocket me-2"/>Get Started Free
+                        </a>
+                    </div>
+                </section>
+                
+                <!-- Benefits Section -->
+                <section class="py-5 bg-light">
+                    <div class="container">
+                        <h2 class="text-center mb-5 fw-bold">Why Sell With Us?</h2>
+                        <div class="row g-4">
+                            <div class="col-md-4">
+                                <div class="card h-100 border-0 shadow-sm text-center p-4">
+                                    <div class="card-body">
+                                        <div class="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" 
+                                             style="width: 80px; height: 80px; background: linear-gradient(135deg, #714B67 0%, #9B6A8F 100%);">
+                                            <i class="fa fa-users fa-2x text-white"/>
+                                        </div>
+                                        <h4 class="fw-bold">Reach More Customers</h4>
+                                        <p class="text-muted">Access our growing customer base and expand your business reach instantly.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card h-100 border-0 shadow-sm text-center p-4">
+                                    <div class="card-body">
+                                        <div class="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" 
+                                             style="width: 80px; height: 80px; background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);">
+                                            <i class="fa fa-line-chart fa-2x text-white"/>
+                                        </div>
+                                        <h4 class="fw-bold">Powerful Dashboard</h4>
+                                        <p class="text-muted">Track orders, manage inventory, and analyze sales with our intuitive seller dashboard.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card h-100 border-0 shadow-sm text-center p-4">
+                                    <div class="card-body">
+                                        <div class="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" 
+                                             style="width: 80px; height: 80px; background: linear-gradient(135deg, #28a745 0%, #20863d 100%);">
+                                            <i class="fa fa-shield fa-2x text-white"/>
+                                        </div>
+                                        <h4 class="fw-bold">Secure Payments</h4>
+                                        <p class="text-muted">Get paid reliably with our secure payment processing and transparent payouts.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- How It Works Section -->
+                <section class="py-5">
+                    <div class="container">
+                        <h2 class="text-center mb-5 fw-bold">How It Works</h2>
+                        <div class="row">
+                            <div class="col-md-3 text-center mb-4">
+                                <div class="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center bg-primary text-white" 
+                                     style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold;">1</div>
+                                <h5 class="fw-bold">Register</h5>
+                                <p class="text-muted small">Create your seller account with basic information</p>
+                            </div>
+                            <div class="col-md-3 text-center mb-4">
+                                <div class="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center bg-primary text-white" 
+                                     style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold;">2</div>
+                                <h5 class="fw-bold">Submit KYC</h5>
+                                <p class="text-muted small">Upload identity documents for verification</p>
+                            </div>
+                            <div class="col-md-3 text-center mb-4">
+                                <div class="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center bg-primary text-white" 
+                                     style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold;">3</div>
+                                <h5 class="fw-bold">Get Approved</h5>
+                                <p class="text-muted small">Our team reviews and approves your account</p>
+                            </div>
+                            <div class="col-md-3 text-center mb-4">
+                                <div class="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center bg-success text-white" 
+                                     style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold;">4</div>
+                                <h5 class="fw-bold">Start Selling</h5>
+                                <p class="text-muted small">List your products and start making sales</p>
+                            </div>
+                        </div>
+                        <div class="text-center mt-4">
+                            <a href="/seller/register" class="btn btn-primary btn-lg px-5">
+                                <i class="fa fa-arrow-right me-2"/>Start Registration
+                            </a>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- FAQ Section -->
+                <section class="py-5 bg-light">
+                    <div class="container">
+                        <h2 class="text-center mb-5 fw-bold">Frequently Asked Questions</h2>
+                        <div class="row justify-content-center">
+                            <div class="col-lg-8">
+                                <div class="accordion" id="sellerFaq">
+                                    <div class="accordion-item">
+                                        <h3 class="accordion-header">
+                                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                                                What documents do I need to register?
+                                            </button>
+                                        </h3>
+                                        <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#sellerFaq">
+                                            <div class="accordion-body">
+                                                You'll need a valid government-issued ID (passport or national ID) and a business registration document if you're selling as a company. Additional documents may be required based on your business type.
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="accordion-item">
+                                        <h3 class="accordion-header">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                                                How long does approval take?
+                                            </button>
+                                        </h3>
+                                        <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#sellerFaq">
+                                            <div class="accordion-body">
+                                                Most applications are reviewed within 1-3 business days. You'll receive email notifications about your application status.
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="accordion-item">
+                                        <h3 class="accordion-header">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                                                What are the fees?
+                                            </button>
+                                        </h3>
+                                        <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#sellerFaq">
+                                            <div class="accordion-body">
+                                                Registration is free. We charge a small commission on each sale, typically 10%. There are no monthly fees or hidden charges.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </t>
+    </template>
+
+    <!-- Seller Registration Form -->
+    <template id="seller_registration_form" name="Seller Registration Form">
+        <t t-call="website.layout">
+            <t t-set="title">Seller Registration</t>
+            <div id="wrap" class="oe_structure">
+                <div class="container py-5">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-8">
+                            <!-- Header -->
+                            <div class="text-center mb-4">
+                                <h1 class="fw-bold" style="color: #714B67;">Seller Registration</h1>
+                                <p class="text-muted">Complete the form below to create your seller account</p>
+                            </div>
+                            
+                            <!-- Error Alert -->
+                            <div t-if="error" class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <i class="fa fa-exclamation-circle me-2"/><t t-esc="error"/>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"/>
+                            </div>
+                            
+                            <!-- Success Alert -->
+                            <div t-if="success" class="alert alert-success alert-dismissible fade show" role="alert">
+                                <i class="fa fa-check-circle me-2"/><t t-esc="success"/>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"/>
+                            </div>
+                            
+                            <!-- Registration Form -->
+                            <form action="/seller/register" method="post" enctype="multipart/form-data" class="needs-validation">
+                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                
+                                <!-- Step 1: Business Information -->
+                                <div class="card shadow-sm mb-4">
+                                    <div class="card-header bg-white py-3">
+                                        <h5 class="mb-0">
+                                            <span class="badge bg-primary me-2">1</span>Business Information
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label" for="company_name">Store/Business Name <span class="text-danger">*</span></label>
+                                                <input type="text" class="form-control" id="company_name" name="company_name" 
+                                                       t-att-value="form_data.get('company_name', '') if form_data else ''" required="required"
+                                                       placeholder="Your store name"/>
+                                                <div class="form-text">This will be displayed to customers</div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label" for="business_type">Business Type</label>
+                                                <select class="form-select" id="business_type" name="business_type">
+                                                    <option value="individual">Individual / Sole Proprietor</option>
+                                                    <option value="company">Company / Corporation</option>
+                                                    <option value="partnership">Partnership</option>
+                                                    <option value="other">Other</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label" for="tax_id">Tax ID / VAT Number</label>
+                                                <input type="text" class="form-control" id="tax_id" name="tax_id"
+                                                       t-att-value="form_data.get('tax_id', '') if form_data else ''"
+                                                       placeholder="Optional"/>
+                                            </div>
+                                            <div class="col-12">
+                                                <label class="form-label" for="store_description">Store Description</label>
+                                                <textarea class="form-control" id="store_description" name="store_description" rows="3"
+                                                          placeholder="Tell customers about your store..."><t t-if="form_data" t-esc="form_data.get('store_description', '')"/></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Step 2: Contact Information -->
+                                <div class="card shadow-sm mb-4">
+                                    <div class="card-header bg-white py-3">
+                                        <h5 class="mb-0">
+                                            <span class="badge bg-primary me-2">2</span>Contact Information
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label" for="email">Email</label>
+                                                <input type="email" class="form-control" id="email" name="email"
+                                                       t-att-value="user.email" readonly="readonly" disabled="disabled"/>
+                                                <div class="form-text">Using your account email</div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label" for="phone">Phone Number <span class="text-danger">*</span></label>
+                                                <input type="tel" class="form-control" id="phone" name="phone" required="required"
+                                                       t-att-value="form_data.get('phone', '') if form_data else ''"
+                                                       placeholder="+222 XX XX XX XX"/>
+                                            </div>
+                                            <div class="col-12">
+                                                <label class="form-label" for="street">Street Address</label>
+                                                <input type="text" class="form-control" id="street" name="street"
+                                                       t-att-value="form_data.get('street', '') if form_data else ''"
+                                                       placeholder="Street address"/>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label" for="city">City <span class="text-danger">*</span></label>
+                                                <input type="text" class="form-control" id="city" name="city" required="required"
+                                                       t-att-value="form_data.get('city', '') if form_data else ''"
+                                                       placeholder="City"/>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label" for="country_id">Country</label>
+                                                <select class="form-select" id="country_id" name="country_id">
+                                                    <option value="">Select country...</option>
+                                                    <t t-foreach="countries" t-as="country">
+                                                        <option t-att-value="country.id" t-esc="country.name"/>
+                                                    </t>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Step 3: Bank Information -->
+                                <div class="card shadow-sm mb-4">
+                                    <div class="card-header bg-white py-3">
+                                        <h5 class="mb-0">
+                                            <span class="badge bg-primary me-2">3</span>Bank Information (for payouts)
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label" for="bank_name">Bank Name</label>
+                                                <input type="text" class="form-control" id="bank_name" name="bank_name"
+                                                       t-att-value="form_data.get('bank_name', '') if form_data else ''"
+                                                       placeholder="Bank name"/>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label" for="bank_account">Account Number</label>
+                                                <input type="text" class="form-control" id="bank_account" name="bank_account"
+                                                       t-att-value="form_data.get('bank_account', '') if form_data else ''"
+                                                       placeholder="Account number"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Step 4: KYC Documents -->
+                                <div class="card shadow-sm mb-4">
+                                    <div class="card-header bg-white py-3">
+                                        <h5 class="mb-0">
+                                            <span class="badge bg-primary me-2">4</span>Identity Verification (KYC)
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="alert alert-info mb-4">
+                                            <i class="fa fa-info-circle me-2"/>
+                                            <strong>Why we need this:</strong> Identity verification helps us ensure a safe marketplace for everyone. Your documents are kept secure and confidential.
+                                        </div>
+                                        
+                                        <t t-if="document_types">
+                                            <div class="row g-4">
+                                                <t t-foreach="document_types" t-as="doc_type">
+                                                    <div class="col-md-6">
+                                                        <div class="card h-100 border">
+                                                            <div class="card-body">
+                                                                <h6 class="card-title">
+                                                                    <t t-esc="doc_type.name"/>
+                                                                    <span t-if="doc_type.required" class="badge bg-danger ms-1">Required</span>
+                                                                </h6>
+                                                                <p t-if="doc_type.description" class="card-text small text-muted">
+                                                                    <t t-esc="doc_type.description"/>
+                                                                </p>
+                                                                <input type="file" class="form-control" 
+                                                                       t-att-name="'kyc_doc_%s' % doc_type.id"
+                                                                       t-att-id="'kyc_doc_%s' % doc_type.id"
+                                                                       accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                                                       t-att-required="doc_type.required"/>
+                                                                <div class="form-text">Accepted: PDF, JPG, PNG, DOC (max 10MB)</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </t>
+                                            </div>
+                                        </t>
+                                        <t t-else="">
+                                            <!-- Fallback to single document upload -->
+                                            <div class="mb-3">
+                                                <label class="form-label" for="kyc_doc">Identity Document <span class="text-danger">*</span></label>
+                                                <input type="file" class="form-control" id="kyc_doc" name="kyc_doc"
+                                                       accept=".pdf,.jpg,.jpeg,.png" required="required"/>
+                                                <div class="form-text">Upload your passport, national ID, or business license (PDF, JPG, PNG - max 10MB)</div>
+                                            </div>
+                                        </t>
+                                    </div>
+                                </div>
+                                
+                                <!-- Step 5: Store Logo (Optional) -->
+                                <div class="card shadow-sm mb-4">
+                                    <div class="card-header bg-white py-3">
+                                        <h5 class="mb-0">
+                                            <span class="badge bg-secondary me-2">5</span>Store Logo (Optional)
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-8">
+                                                <input type="file" class="form-control" id="store_logo" name="store_logo"
+                                                       accept=".jpg,.jpeg,.png"/>
+                                                <div class="form-text">Recommended: Square image, at least 200x200px</div>
+                                            </div>
+                                            <div class="col-md-4 text-center">
+                                                <div class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center"
+                                                     style="width: 80px; height: 80px;">
+                                                    <i class="fa fa-camera fa-2x text-muted"/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Terms and Conditions -->
+                                <div class="card shadow-sm mb-4 border-primary">
+                                    <div class="card-body">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="terms_accepted" 
+                                                   name="terms_accepted" value="1" required="required"/>
+                                            <label class="form-check-label" for="terms_accepted">
+                                                I agree to the <a href="/terms" target="_blank">Terms and Conditions</a> 
+                                                and <a href="/privacy" target="_blank">Privacy Policy</a>. 
+                                                I confirm that all information provided is accurate. <span class="text-danger">*</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Submit Button -->
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="fa fa-paper-plane me-2"/>Submit Registration
+                                    </button>
+                                    <a href="/become-a-seller" class="btn btn-outline-secondary">
+                                        <i class="fa fa-arrow-left me-2"/>Back
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- Registration Success Page -->
+    <template id="seller_registration_success" name="Registration Success">
+        <t t-call="website.layout">
+            <t t-set="title">Registration Submitted</t>
+            <div id="wrap" class="oe_structure">
+                <div class="container py-5">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-6 text-center">
+                            <div class="card shadow-sm border-0">
+                                <div class="card-body py-5">
+                                    <div class="rounded-circle mx-auto mb-4 d-flex align-items-center justify-content-center bg-success text-white"
+                                         style="width: 100px; height: 100px;">
+                                        <i class="fa fa-check fa-3x"/>
+                                    </div>
+                                    <h2 class="fw-bold mb-3">Registration Submitted!</h2>
+                                    <p class="text-muted mb-4">
+                                        Thank you for registering as a seller. Your application has been submitted for review.
+                                    </p>
+                                    
+                                    <div class="alert alert-info text-start mb-4">
+                                        <h6 class="alert-heading"><i class="fa fa-info-circle me-2"/>What happens next?</h6>
+                                        <ol class="mb-0 ps-3">
+                                            <li>Our team will review your application and documents</li>
+                                            <li>You'll receive an email notification with the result</li>
+                                            <li>Once approved, you can start adding products</li>
+                                        </ol>
+                                        <hr/>
+                                        <p class="mb-0 small">Review typically takes 1-3 business days.</p>
+                                    </div>
+                                    
+                                    <t t-if="seller">
+                                        <div class="d-grid gap-2">
+                                            <a href="/my/seller/dashboard" class="btn btn-primary">
+                                                <i class="fa fa-tachometer me-2"/>Go to Seller Dashboard
+                                            </a>
+                                            <a href="/shop" class="btn btn-outline-secondary">
+                                                <i class="fa fa-shopping-cart me-2"/>Continue Shopping
+                                            </a>
+                                        </div>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+</odoo>

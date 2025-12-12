@@ -75,6 +75,8 @@ Features:
         'data/delivery_zone_data.xml',
         'data/analytics_cron.xml',
         'data/cart_abandonment_sequence.xml',
+        'data/kyc_document_types.xml',
+        'data/email_templates.xml',
         
         # Views (Backend)
         'views/product_template_views.xml',
@@ -82,11 +84,13 @@ Features:
         'views/sale_order_views.xml',
         'views/analytics_views.xml',
         'views/marketplace_seller_views.xml',
+        'views/seller_admin_views.xml',
         'views/menus.xml',
         
         # Website Templates
         'views/website_templates.xml',
         'views/seller_portal_templates.xml',
+        'views/seller_registration_templates.xml',
     ],
     'demo': [
         'demo/demo_data.xml',

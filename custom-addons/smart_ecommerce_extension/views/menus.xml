@@ -62,18 +62,25 @@
         </field>
     </record>
     
-    <menuitem 
+    <menuitem
         id="menu_smart_kyc_pending"
         name="Pending KYC Verification"
         parent="menu_smart_sellers"
         action="action_marketplace_sellers_kyc_pending"
         sequence="15"/>
+
+    <menuitem
+        id="menu_smart_kyc_documents"
+        name="KYC Documents Review"
+        parent="menu_smart_sellers"
+        action="action_seller_kyc_documents_pending"
+        sequence="16"/>
     
-    <menuitem 
+    <menuitem
         id="menu_smart_pending_sellers"
         name="Pending Approvals"
         parent="menu_smart_sellers"
-        action="action_marketplace_sellers_pending"
+        action="action_seller_approval_review"
         sequence="20"/>
     
     <!-- Approved & Active Sellers Action -->
@@ -526,12 +533,19 @@
         parent="menu_smart_ecommerce_root"
         sequence="50"/>
     
-    <menuitem 
+    <menuitem
         id="menu_smart_config_delivery_zones"
         name="Delivery Zones"
         parent="menu_smart_configuration"
         action="delivery_zone_action"
         sequence="10"/>
+
+    <menuitem
+        id="menu_smart_config_kyc_document_types"
+        name="KYC Document Types"
+        parent="menu_smart_configuration"
+        action="action_seller_kyc_document_types"
+        sequence="20"/>
     
     <!-- ============================================================ -->
     <!-- LEGACY MENUS (keep for backward compatibility) -->
