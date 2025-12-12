@@ -9,103 +9,10 @@
         <xpath expr="//div[@id='wrap']" position="inside">
             <t t-set="categories" t-value="request.env['product.public.category'].sudo().search([('parent_id', '=', False)])"/>
             
-            <!-- Hero Section with Categories -->
-            <section class="smart-homepage-categories py-5" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
-                <div class="container">
-                    <!-- Section Header -->
-                    <div class="text-center mb-4">
-                        <h2 class="fw-bold" style="color:rgb(75, 113, 95);">
-                            <i class="fa fa-th-large me-2"/>Shop by Category
-                        </h2>
-                        <p class="text-muted">Browse our wide selection of products</p>
-                    </div>
-                    
-                    <!-- Categories Grid -->
-                    <div class="row g-3 justify-content-center">
-                        <!-- All Products Card -->
-                        <div class="col-6 col-md-4 col-lg-2">
-                            <a href="/shop" class="card smart-category-card h-100 text-decoration-none border-0 shadow-sm">
-                                <div class="card-body text-center py-4">
-                                    <i class="fa fa-shopping-bag fa-3x mb-3" style="color: #714B67;"/>
-                                    <h6 class="card-title mb-0">All Products</h6>
-                                </div>
-                            </a>
-                        </div>
-                        <!-- Category Cards -->
-                        <t t-foreach="categories[:5]" t-as="cat">
-                            <div class="col-6 col-md-4 col-lg-2">
-                                <a t-att-href="'/shop/category/%s' % slug(cat)" class="card smart-category-card h-100 text-decoration-none border-0 shadow-sm">
-                                    <div class="card-body text-center py-4">
-                                        <t t-if="cat.image_128">
-                                            <img t-att-src="image_data_uri(cat.image_128)" 
-                                                 class="rounded-circle mb-3" 
-                                                 style="width: 64px; height: 64px; object-fit: cover;"/>
-                                        </t>
-                                        <t t-else="">
-                                            <i class="fa fa-folder-open fa-3x mb-3" style="color: #714B67;"/>
-                                        </t>
-                                        <h6 class="card-title mb-1"><t t-esc="cat.name"/></h6>
-                                        <span class="badge bg-secondary"><t t-esc="len(cat.product_tmpl_ids)"/> items</span>
-                                    </div>
-                                </a>
-                            </div>
-                        </t>
-                    </div>
-                    
-                    <!-- View All Categories Link -->
-                    <div t-if="len(categories) > 5" class="text-center mt-4">
-                        <a href="/shop" class="btn btn-outline-primary">
-                            View All Categories <i class="fa fa-arrow-right ms-2"/>
-                        </a>
-                    </div>
-                </div>
-            </section>
-            
-            <!-- Quick Links -->
-            <section class="smart-quick-links py-4">
-                <div class="container">
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <a href="/shop?availability=in_stock" class="card bg-success text-white text-decoration-none h-100">
-                                <div class="card-body d-flex align-items-center">
-                                    <i class="fa fa-check-circle fa-2x me-3"/>
-                                    <div>
-                                        <h6 class="mb-0">In Stock</h6>
-                                        <small>Available now</small>
-                                    </div>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="col-md-4">
-                            <a href="/shop?order=create_date+desc" class="card bg-info text-white text-decoration-none h-100">
-                                <div class="card-body d-flex align-items-center">
-                                    <i class="fa fa-star fa-2x me-3"/>
-                                    <div>
-                                        <h6 class="mb-0">New Arrivals</h6>
-                                        <small>Latest products</small>
-                                    </div>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="col-md-4">
-                            <a href="/shop" class="card text-decoration-none h-100" style="background: linear-gradient(135deg, #714B67 0%, #9B6A8F 100%); color: white;">
-                                <div class="card-body d-flex align-items-center">
-                                    <i class="fa fa-percent fa-2x me-3"/>
-                                    <div>
-                                        <h6 class="mb-0">Special Offers</h6>
-                                        <small>Best deals</small>
-                                    </div>
-                                </div>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </section>
-            
             <!-- ============================================================ -->
-            <!-- BECOME A SELLER CTA SECTION -->
+            <!-- BECOME A SELLER CTA SECTION (TOP) -->
             <!-- ============================================================ -->
-            <section class="smart-become-seller-cta py-5 my-4" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);">
+            <section class="smart-become-seller-cta py-5" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);">
                 <div class="container">
                     <div class="row align-items-center">
                         <!-- Left: Content -->
@@ -231,6 +138,99 @@
                                     </a>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Hero Section with Categories -->
+            <section class="smart-homepage-categories py-5" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
+                <div class="container">
+                    <!-- Section Header -->
+                    <div class="text-center mb-4">
+                        <h2 class="fw-bold" style="color:rgb(75, 113, 95);">
+                            <i class="fa fa-th-large me-2"/>Shop by Category
+                        </h2>
+                        <p class="text-muted">Browse our wide selection of products</p>
+                    </div>
+                    
+                    <!-- Categories Grid -->
+                    <div class="row g-3 justify-content-center">
+                        <!-- All Products Card -->
+                        <div class="col-6 col-md-4 col-lg-2">
+                            <a href="/shop" class="card smart-category-card h-100 text-decoration-none border-0 shadow-sm">
+                                <div class="card-body text-center py-4">
+                                    <i class="fa fa-shopping-bag fa-3x mb-3" style="color: #714B67;"/>
+                                    <h6 class="card-title mb-0">All Products</h6>
+                                </div>
+                            </a>
+                        </div>
+                        <!-- Category Cards -->
+                        <t t-foreach="categories[:5]" t-as="cat">
+                            <div class="col-6 col-md-4 col-lg-2">
+                                <a t-att-href="'/shop/category/%s' % slug(cat)" class="card smart-category-card h-100 text-decoration-none border-0 shadow-sm">
+                                    <div class="card-body text-center py-4">
+                                        <t t-if="cat.image_128">
+                                            <img t-att-src="image_data_uri(cat.image_128)" 
+                                                 class="rounded-circle mb-3" 
+                                                 style="width: 64px; height: 64px; object-fit: cover;"/>
+                                        </t>
+                                        <t t-else="">
+                                            <i class="fa fa-folder-open fa-3x mb-3" style="color: #714B67;"/>
+                                        </t>
+                                        <h6 class="card-title mb-1"><t t-esc="cat.name"/></h6>
+                                        <span class="badge bg-secondary"><t t-esc="len(cat.product_tmpl_ids)"/> items</span>
+                                    </div>
+                                </a>
+                            </div>
+                        </t>
+                    </div>
+                    
+                    <!-- View All Categories Link -->
+                    <div t-if="len(categories) > 5" class="text-center mt-4">
+                        <a href="/shop" class="btn btn-outline-primary">
+                            View All Categories <i class="fa fa-arrow-right ms-2"/>
+                        </a>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Quick Links -->
+            <section class="smart-quick-links py-4">
+                <div class="container">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <a href="/shop?availability=in_stock" class="card bg-success text-white text-decoration-none h-100">
+                                <div class="card-body d-flex align-items-center">
+                                    <i class="fa fa-check-circle fa-2x me-3"/>
+                                    <div>
+                                        <h6 class="mb-0">In Stock</h6>
+                                        <small>Available now</small>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <a href="/shop?order=create_date+desc" class="card bg-info text-white text-decoration-none h-100">
+                                <div class="card-body d-flex align-items-center">
+                                    <i class="fa fa-star fa-2x me-3"/>
+                                    <div>
+                                        <h6 class="mb-0">New Arrivals</h6>
+                                        <small>Latest products</small>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <a href="/shop" class="card text-decoration-none h-100" style="background: linear-gradient(135deg, #714B67 0%, #9B6A8F 100%); color: white;">
+                                <div class="card-body d-flex align-items-center">
+                                    <i class="fa fa-percent fa-2x me-3"/>
+                                    <div>
+                                        <h6 class="mb-0">Special Offers</h6>
+                                        <small>Best deals</small>
+                                    </div>
+                                </div>
+                            </a>
                         </div>
                     </div>
                 </div>
