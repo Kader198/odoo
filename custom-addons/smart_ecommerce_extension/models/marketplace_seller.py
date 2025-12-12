@@ -574,8 +574,10 @@ class MarketplaceSeller(models.Model):
     def action_submit_for_approval(self):
         """Submit seller profile for approval"""
         self.ensure_one()
-        if not self.kyc_doc:
-            raise UserError(_('Please upload KYC document before submitting for approval.'))
+        # Check for KYC documents (either legacy single doc or new multiple docs)
+        has_kyc = self.kyc_doc or self.kyc_document_ids
+        if not has_kyc:
+            raise UserError(_('Please upload KYC document(s) before submitting for approval.'))
         self.write({'state': 'pending'})
         self.message_post(body=_('Seller profile submitted for approval.'))
 
@@ -628,17 +630,30 @@ class MarketplaceSeller(models.Model):
         self.message_post(body=_('Seller reactivated by %s') % self.env.user.name)
 
     def action_verify_kyc(self):
-        """Mark KYC as verified"""
+        """Mark KYC as verified - approves all pending KYC documents"""
         self.ensure_one()
-        if not self.kyc_doc:
-            raise UserError(_('No KYC document uploaded. Cannot verify.'))
+        # Check for any KYC documents
+        has_kyc = self.kyc_doc or self.kyc_document_ids
+        if not has_kyc:
+            raise UserError(_('No KYC documents uploaded. Cannot verify.'))
+        
+        # Approve all pending documents in the new system
+        pending_docs = self.kyc_document_ids.filtered(lambda d: d.state == 'pending')
+        for doc in pending_docs:
+            doc.write({
+                'state': 'approved',
+                'reviewed_by': self.env.user.id,
+                'reviewed_date': fields.Datetime.now(),
+            })
+        
+        # Mark seller as KYC verified
         self.write({
             'kyc_verified': True,
             'kyc_verified_date': fields.Date.today(),
             'kyc_verified_by': self.env.user.id,
             'kyc_rejection_reason': False,  # Clear any previous rejection
         })
-        self.message_post(body=_('KYC verified by %s') % self.env.user.name)
+        self.message_post(body=_('KYC verified by %s. %d document(s) approved.') % (self.env.user.name, len(pending_docs)))
         
         # Send notification email
         template = self.env.ref('smart_ecommerce_extension.email_kyc_verified', raise_if_not_found=False)
@@ -660,12 +675,22 @@ class MarketplaceSeller(models.Model):
     def action_request_kyc_resubmission(self):
         """Request seller to resubmit KYC documents"""
         self.ensure_one()
-        self.write({
+        # Clear legacy KYC fields
+        vals = {
             'kyc_verified': False,
-            'kyc_doc': False,
-            'kyc_doc_filename': False,
-        })
-        self.message_post(body=_('KYC document cleared. Seller needs to resubmit.'))
+            'kyc_rejection_reason': False,
+        }
+        # Only clear kyc_doc if it exists as a field
+        if hasattr(self, 'kyc_doc'):
+            vals['kyc_doc'] = False
+            vals['kyc_doc_filename'] = False
+        
+        self.write(vals)
+        
+        # Mark all documents as needing resubmission (delete them)
+        self.kyc_document_ids.unlink()
+        
+        self.message_post(body=_('KYC documents cleared. Seller needs to resubmit.'))
 
     # ==========================================
     # VIEW ACTIONS

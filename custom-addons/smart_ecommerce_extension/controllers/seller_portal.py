@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # Part of SMART eCommerce Extension. See LICENSE file for full copyright and licensing details.
 
+import base64
 import logging
 from odoo import http, fields, _
 from odoo.http import request
@@ -45,10 +46,10 @@ class SellerPortal(CustomerPortal):
         if not seller:
             return request.redirect('/my/seller/register')
         
-        if seller.state not in ('approved', 'pending'):
-            return request.render('smart_ecommerce_extension.seller_not_approved', {
-                'seller': seller,
-            })
+        # Show dashboard for all sellers (draft, pending, approved)
+        # Only redirect rejected/suspended to status page
+        if seller.state in ('rejected', 'suspended'):
+            return request.redirect('/my/seller/status')
         
         dashboard_data = seller.get_portal_dashboard_data()
         
@@ -59,12 +60,39 @@ class SellerPortal(CustomerPortal):
         
         values = {
             'page_name': 'seller_dashboard',
+            'default_url': '/my/seller/dashboard',
             'seller': seller,
             'dashboard': dashboard_data,
             'recent_orders': recent_orders,
         }
-        
+
         return request.render('smart_ecommerce_extension.seller_dashboard', values)
+    
+    @http.route('/my/seller/status', type='http', auth='user', website=True)
+    def seller_request_status(self, **kw):
+        """Seller request status page - shows application status for all states"""
+        seller = self._get_current_seller()
+        
+        if not seller:
+            return request.redirect('/my/seller/register')
+        
+        # Calculate KYC status
+        has_kyc = seller.kyc_doc or seller.kyc_document_ids
+        kyc_count = len(seller.kyc_document_ids) if seller.kyc_document_ids else (1 if seller.kyc_doc else 0)
+        kyc_approved = len(seller.kyc_document_ids.filtered(lambda d: d.state == 'approved')) if seller.kyc_document_ids else (1 if seller.kyc_verified else 0)
+        kyc_pending = len(seller.kyc_document_ids.filtered(lambda d: d.state == 'pending')) if seller.kyc_document_ids else 0
+        
+        values = {
+            'page_name': 'seller_status',
+            'default_url': '/my/seller/status',
+            'seller': seller,
+            'has_kyc': has_kyc,
+            'kyc_count': kyc_count,
+            'kyc_approved': kyc_approved,
+            'kyc_pending': kyc_pending,
+        }
+        
+        return request.render('smart_ecommerce_extension.seller_request_status', values)
 
     @http.route('/my/seller/register', type='http', auth='user', website=True)
     def seller_register(self, **kw):
@@ -129,15 +157,19 @@ class SellerPortal(CustomerPortal):
             
             # Handle file uploads
             if kw.get('kyc_doc'):
-                seller.sudo().write({
-                    'kyc_doc': kw['kyc_doc'].read(),
-                    'kyc_doc_filename': kw['kyc_doc'].filename,
-                })
+                file_obj = kw['kyc_doc']
+                if hasattr(file_obj, 'read'):
+                    seller.sudo().write({
+                        'kyc_doc': base64.b64encode(file_obj.read()),
+                        'kyc_doc_filename': file_obj.filename if hasattr(file_obj, 'filename') else 'kyc_document',
+                    })
             
             if kw.get('store_logo'):
-                seller.sudo().write({
-                    'store_logo': kw['store_logo'].read(),
-                })
+                file_obj = kw['store_logo']
+                if hasattr(file_obj, 'read'):
+                    seller.sudo().write({
+                        'store_logo': base64.b64encode(file_obj.read()),
+                    })
             
             return request.redirect('/my/seller/dashboard?success=registered')
             
@@ -205,6 +237,7 @@ class SellerPortal(CustomerPortal):
         
         values = {
             'page_name': 'seller_orders',
+            'default_url': '/my/seller/orders',
             'seller': seller,
             'orders': orders,
             'pager': pager,
@@ -213,7 +246,7 @@ class SellerPortal(CustomerPortal):
             'searchbar_filters': searchbar_filters,
             'filterby': filterby,
         }
-        
+
         return request.render('smart_ecommerce_extension.seller_orders', values)
 
     @http.route('/my/seller/orders/<int:order_id>', type='http', auth='user', website=True)
@@ -231,10 +264,11 @@ class SellerPortal(CustomerPortal):
         
         values = {
             'page_name': 'seller_order_detail',
+            'default_url': '/my/seller/orders/%s' % order_id,
             'seller': seller,
             'order': order,
         }
-        
+
         return request.render('smart_ecommerce_extension.seller_order_detail', values)
 
     # ==========================================
@@ -265,6 +299,7 @@ class SellerPortal(CustomerPortal):
         
         values = {
             'page_name': 'seller_payments',
+            'default_url': '/my/seller/payments',
             'seller': seller,
             'payments': payment_data['payments'],
             'pager': pager,
@@ -272,7 +307,7 @@ class SellerPortal(CustomerPortal):
             'total_commission': total_commission,
             'commission_rate': seller.commission_rate,
         }
-        
+
         return request.render('smart_ecommerce_extension.seller_payments', values)
 
     # ==========================================
@@ -291,12 +326,13 @@ class SellerPortal(CustomerPortal):
         
         values = {
             'page_name': 'seller_profile',
+            'default_url': '/my/seller/profile',
             'seller': seller,
             'countries': countries,
             'success': kw.get('success'),
             'error': kw.get('error'),
         }
-        
+
         return request.render('smart_ecommerce_extension.seller_profile', values)
 
     @http.route('/my/seller/profile/update', type='http', auth='user', website=True, methods=['POST'])
@@ -322,18 +358,24 @@ class SellerPortal(CustomerPortal):
             
             # Handle file uploads
             if kw.get('kyc_doc'):
-                vals['kyc_doc'] = kw['kyc_doc'].read()
-                vals['kyc_doc_filename'] = kw['kyc_doc'].filename
-            
+                file_obj = kw['kyc_doc']
+                if hasattr(file_obj, 'read'):
+                    vals['kyc_doc'] = base64.b64encode(file_obj.read())
+                    vals['kyc_doc_filename'] = file_obj.filename if hasattr(file_obj, 'filename') else 'kyc_document'
+
             if kw.get('store_logo'):
-                vals['store_logo'] = kw['store_logo'].read()
-            
+                file_obj = kw['store_logo']
+                if hasattr(file_obj, 'read'):
+                    vals['store_logo'] = base64.b64encode(file_obj.read())
+
             if kw.get('store_banner'):
-                vals['store_banner'] = kw['store_banner'].read()
-            
+                file_obj = kw['store_banner']
+                if hasattr(file_obj, 'read'):
+                    vals['store_banner'] = base64.b64encode(file_obj.read())
+
             if vals:
                 seller.sudo().write(vals)
-            
+
             return request.redirect('/my/seller/profile?success=updated')
             
         except Exception as e:
@@ -378,20 +420,19 @@ class SellerPortal(CustomerPortal):
         
         values = {
             'page_name': 'seller_documents',
+            'default_url': '/my/seller/documents',
             'seller': seller,
             'document_types': document_types,
             'uploaded_docs': uploaded_docs,
             'success': kw.get('success'),
             'error': kw.get('error'),
         }
-        
+
         return request.render('smart_ecommerce_extension.seller_documents', values)
 
     @http.route('/my/seller/documents/upload', type='http', auth='user', website=True, methods=['POST'])
     def seller_documents_upload(self, **kw):
         """Upload a KYC document"""
-        import base64
-        
         seller = self._get_current_seller()
         
         if not seller:
@@ -444,18 +485,17 @@ class SellerPortal(CustomerPortal):
         
         values = {
             'page_name': 'seller_store',
+            'default_url': '/my/seller/store',
             'seller': seller,
             'success': kw.get('success'),
             'error': kw.get('error'),
         }
-        
+
         return request.render('smart_ecommerce_extension.seller_store_settings', values)
 
     @http.route('/my/seller/store/update', type='http', auth='user', website=True, methods=['POST'])
     def seller_store_update(self, **kw):
         """Update store settings"""
-        import base64
-        
         seller = self._get_current_seller()
         
         if not seller:
@@ -547,6 +587,7 @@ class SellerPortal(CustomerPortal):
         
         values = {
             'page_name': 'seller_products',
+            'default_url': '/my/seller/products',
             'seller': seller,
             'products': products,
             'pager': pager,
@@ -579,18 +620,17 @@ class SellerPortal(CustomerPortal):
         
         values = {
             'page_name': 'seller_product_new',
+            'default_url': '/my/seller/products/new',
             'seller': seller,
             'categories': categories,
             'error': kw.get('error'),
         }
-        
+
         return request.render('smart_ecommerce_extension.seller_product_form', values)
 
     @http.route('/my/seller/products/create', type='http', auth='user', website=True, methods=['POST'])
     def seller_product_create(self, **kw):
         """Create new product"""
-        import base64
-        
         seller = self._get_current_seller()
         
         if not seller or not seller.can_do_commercial_actions:
@@ -656,20 +696,19 @@ class SellerPortal(CustomerPortal):
         
         values = {
             'page_name': 'seller_product_detail',
+            'default_url': '/my/seller/products/%s' % product_id,
             'seller': seller,
             'product': product,
             'categories': categories,
             'success': kw.get('success'),
             'error': kw.get('error'),
         }
-        
+
         return request.render('smart_ecommerce_extension.seller_product_detail', values)
 
     @http.route('/my/seller/products/<int:product_id>/update', type='http', auth='user', website=True, methods=['POST'])
     def seller_product_update(self, product_id, **kw):
         """Update product"""
-        import base64
-        
         seller = self._get_current_seller()
         
         if not seller:
@@ -777,6 +816,7 @@ class SellerPortal(CustomerPortal):
         
         values = {
             'page_name': 'seller_commissions',
+            'default_url': '/my/seller/commissions',
             'seller': seller,
             'commissions': commissions,
             'pager': pager,
@@ -785,6 +825,6 @@ class SellerPortal(CustomerPortal):
             'total_paid': total_paid,
             'commission_rate': seller.commission_rate,
         }
-        
+
         return request.render('smart_ecommerce_extension.seller_commissions', values)
 

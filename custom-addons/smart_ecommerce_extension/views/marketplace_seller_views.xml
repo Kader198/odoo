@@ -1,13 +1,176 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- ============================================================ -->
-    <!-- MARKETPLACE SELLER VIEWS -->
+    <!-- MARKETPLACE SELLER VIEWS - EXTENSIONS -->
     <!-- ============================================================ -->
     
-    <!-- Seller Form View -->
-    <record id="view_marketplace_seller_form" model="ir.ui.view">
-        <field name="name">marketplace.seller.form</field>
+    <!-- Extend Base Seller Form View - KYC Documents Enhancement -->
+    <record id="view_marketplace_seller_form_kyc_extension" model="ir.ui.view">
+        <field name="name">marketplace.seller.form.kyc.extension</field>
         <field name="model">marketplace.seller</field>
+        <field name="inherit_id" ref="smart_marketplace_core.view_marketplace_seller_form"/>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <!-- Replace the KYC Documents page with enhanced version -->
+            <xpath expr="//page[@name='kyc_documents']" position="replace">
+                <page string="KYC &amp; Documents" name="kyc_documents">
+                    <!-- Quick Review Panel for Pending Sellers -->
+                    <div class="alert alert-primary" role="alert"
+                         invisible="state != 'pending'" groups="sales_team.group_sale_manager">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <i class="fa fa-clipboard-check fa-lg me-2"/> 
+                                <strong>Seller Approval Review</strong>
+                                <p class="mb-0 mt-1">Review the seller information and KYC documents below, then approve or reject.</p>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button name="action_approve" string="✓ Approve Seller"
+                                        type="object" class="btn btn-success"/>
+                                <button name="action_reject" string="✗ Reject"
+                                        type="object" class="btn btn-outline-danger"/>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- KYC Status Banner -->
+                    <div class="alert alert-success" role="alert" invisible="not kyc_verified">
+                        <i class="fa fa-check-circle"/> <strong>KYC Verified</strong> - 
+                        Verified on <field name="kyc_verified_date" readonly="1" widget="date"/> 
+                        by <field name="kyc_verified_by" readonly="1" class="d-inline"/>
+                    </div>
+                    <div class="alert alert-warning" role="alert" 
+                         invisible="kyc_verified or kyc_rejection_reason or kyc_pending_documents == 0">
+                        <i class="fa fa-clock-o"/> <strong>KYC Pending Review</strong> - 
+                        <field name="kyc_pending_documents" readonly="1" class="d-inline"/> document(s) awaiting verification.
+                    </div>
+                    <div class="alert alert-danger" role="alert" invisible="not kyc_rejection_reason">
+                        <i class="fa fa-times-circle"/> <strong>KYC Rejected</strong>
+                        <p class="mb-0 mt-2"><field name="kyc_rejection_reason" readonly="1"/></p>
+                    </div>
+                    
+                    <!-- KYC Documents Section - Using new document system -->
+                    <group string="KYC Documents">
+                        <field name="kyc_document_ids" nolabel="1" colspan="2">
+                            <list editable="bottom" decoration-success="state == 'approved'"
+                                  decoration-warning="state == 'pending'" decoration-danger="state == 'rejected'">
+                                <field name="document_type_id" string="Document Type" required="1"/>
+                                <field name="file" filename="filename" widget="binary" string="Document File"/>
+                                <field name="filename" string="File Name" readonly="1"/>
+                                <field name="upload_date" string="Uploaded" readonly="1"/>
+                                <field name="state" widget="badge" string="Status"
+                                       decoration-success="state == 'approved'"
+                                       decoration-warning="state == 'pending'"
+                                       decoration-danger="state == 'rejected'"/>
+                                <field name="rejection_reason" string="Notes" optional="show"/>
+                                <button name="action_approve" string="Approve" type="object" 
+                                        class="btn-success" icon="fa-check"
+                                        invisible="state != 'pending'"
+                                        groups="sales_team.group_sale_manager"/>
+                                <button name="action_reject" string="Reject" type="object" 
+                                        class="btn-danger" icon="fa-times"
+                                        invisible="state != 'pending'"
+                                        groups="sales_team.group_sale_manager"/>
+                            </list>
+                        </field>
+                    </group>
+                    
+                    <!-- KYC Summary -->
+                    <group>
+                        <group string="KYC Status">
+                            <field name="kyc_status" widget="badge"
+                                   decoration-success="kyc_status == 'verified'"
+                                   decoration-warning="kyc_status == 'pending'"
+                                   decoration-danger="kyc_status == 'rejected'"
+                                   decoration-info="kyc_status == 'not_submitted'"/>
+                            <field name="kyc_documents_complete" readonly="1"/>
+                            <field name="kyc_documents_approved" readonly="1"/>
+                            <field name="kyc_verified" invisible="1"/>
+                            <field name="can_do_commercial_actions" string="Can Publish Products" 
+                                   widget="boolean" readonly="1"/>
+                        </group>
+                        <group string="Business License">
+                            <field name="business_license" filename="business_license_filename"/>
+                            <field name="business_license_filename" invisible="1"/>
+                        </group>
+                    </group>
+                    
+                    <!-- KYC Action Buttons for Managers -->
+                    <group string="Quick Actions" groups="sales_team.group_sale_manager"
+                           invisible="kyc_pending_documents == 0 and not kyc_document_ids">
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button name="action_verify_kyc" string="✓ Verify All KYC"
+                                    type="object" class="btn btn-success"
+                                    invisible="kyc_verified or kyc_pending_documents == 0"/>
+                            <button name="action_reject_kyc" string="✗ Reject KYC"
+                                    type="object" class="btn btn-warning"
+                                    invisible="kyc_verified or kyc_pending_documents == 0"/>
+                            <button name="action_request_kyc_resubmission" string="Request Resubmission"
+                                    type="object" class="btn btn-secondary"
+                                    invisible="not kyc_verified"/>
+                        </div>
+                    </group>
+                </page>
+            </xpath>
+            
+            <!-- Add Seller Info Tab for Managers -->
+            <xpath expr="//page[@name='stats']" position="after">
+                <page string="Seller Info" name="seller_info" groups="sales_team.group_sale_manager">
+                    <group>
+                        <group string="Registration">
+                            <field name="registration_date" readonly="1"/>
+                            <field name="registration_source" readonly="1"/>
+                            <field name="registration_ip" readonly="1"/>
+                            <field name="terms_accepted" readonly="1"/>
+                        </group>
+                        <group string="Approval Info">
+                            <field name="approved_date" readonly="1"/>
+                            <field name="approved_by" readonly="1"/>
+                            <field name="rejection_reason" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Admin Notes">
+                        <field name="admin_notes" placeholder="Internal notes about this seller..."/>
+                    </group>
+                </page>
+            </xpath>
+            
+            <!-- Add more button box items -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button class="oe_stat_button" icon="fa-id-card" type="object"
+                        name="action_verify_kyc"
+                        invisible="kyc_verified or kyc_pending_documents == 0"
+                        groups="sales_team.group_sale_manager">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_value text-warning">
+                            <i class="fa fa-clock-o"/>
+                        </span>
+                        <span class="o_stat_text">KYC Pending</span>
+                    </div>
+                </button>
+                <div class="oe_stat_button" invisible="not kyc_verified">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_value text-success">
+                            <i class="fa fa-check-circle"/>
+                        </span>
+                        <span class="o_stat_text">KYC Verified</span>
+                    </div>
+                </div>
+            </xpath>
+            
+            <!-- Add header buttons -->
+            <xpath expr="//header/button[@name='action_submit_for_approval']" position="before">
+                <button name="action_add_product" string="Add Product"
+                        type="object" class="btn-primary"
+                        invisible="not can_do_commercial_actions"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- STANDALONE Seller Form View (for custom actions/menus) -->
+    <record id="view_marketplace_seller_form" model="ir.ui.view">
+        <field name="name">marketplace.seller.form.standalone</field>
+        <field name="model">marketplace.seller</field>
+        <field name="priority">50</field>
         <field name="arch" type="xml">
             <form string="Seller">
                 <header>
@@ -114,8 +277,26 @@
                     </group>
                     
                     <notebook>
-                        <!-- Tab 1: KYC & Documents -->
+                        <!-- Tab 1: KYC & Documents - Enhanced for Admin Review -->
                         <page string="KYC &amp; Documents" name="documents">
+                            <!-- Quick Review Panel for Pending Sellers -->
+                            <div class="alert alert-primary" role="alert"
+                                 invisible="state != 'pending'" groups="sales_team.group_sale_manager">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <i class="fa fa-clipboard-check fa-lg me-2"/> 
+                                        <strong>Seller Approval Review</strong>
+                                        <p class="mb-0 mt-1">Review the seller information and KYC documents below, then approve or reject.</p>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button name="action_approve" string="✓ Approve Seller"
+                                                type="object" class="btn btn-success"/>
+                                        <button name="action_reject" string="✗ Reject"
+                                                type="object" class="btn btn-outline-danger"/>
+                                    </div>
+                                </div>
+                            </div>
+                            
                             <!-- KYC Status Banner -->
                             <div class="alert alert-success" role="alert" invisible="not kyc_verified">
                                 <i class="fa fa-check-circle"/> <strong>KYC Verified</strong> - 
@@ -123,28 +304,51 @@
                                 by <field name="kyc_verified_by" readonly="1" class="d-inline"/>
                             </div>
                             <div class="alert alert-warning" role="alert" 
-                                 invisible="kyc_verified or not kyc_doc or kyc_rejection_reason">
+                                 invisible="kyc_verified or kyc_rejection_reason or kyc_pending_documents == 0">
                                 <i class="fa fa-clock-o"/> <strong>KYC Pending Review</strong> - 
-                                Documents have been submitted and are awaiting verification.
+                                <field name="kyc_pending_documents" readonly="1" class="d-inline"/> document(s) awaiting verification.
                             </div>
                             <div class="alert alert-danger" role="alert" invisible="not kyc_rejection_reason">
                                 <i class="fa fa-times-circle"/> <strong>KYC Rejected</strong>
                                 <p class="mb-0 mt-2"><field name="kyc_rejection_reason" readonly="1"/></p>
                             </div>
-                            <div class="alert alert-info" role="alert" invisible="kyc_doc">
-                                <i class="fa fa-info-circle"/> <strong>KYC Required</strong> - 
-                                Please upload your KYC documents to enable product publishing and order management.
-                            </div>
                             
+                            <!-- KYC Documents Section - Always visible for admin to add/view -->
+                            <group string="KYC Documents">
+                                <field name="kyc_document_ids" nolabel="1" colspan="2">
+                                    <list editable="bottom" decoration-success="state == 'approved'"
+                                          decoration-warning="state == 'pending'" decoration-danger="state == 'rejected'">
+                                        <field name="document_type_id" string="Document Type" required="1"/>
+                                        <field name="file" filename="filename" widget="binary" string="Document File"/>
+                                        <field name="filename" string="File Name"/>
+                                        <field name="upload_date" string="Uploaded" readonly="1"/>
+                                        <field name="state" widget="badge" string="Status"
+                                               decoration-success="state == 'approved'"
+                                               decoration-warning="state == 'pending'"
+                                               decoration-danger="state == 'rejected'"/>
+                                        <field name="rejection_reason" string="Notes" optional="show"/>
+                                        <button name="action_approve" string="Approve" type="object" 
+                                                class="btn-success" icon="fa-check"
+                                                invisible="state != 'pending'"
+                                                groups="sales_team.group_sale_manager"/>
+                                        <button name="action_reject" string="Reject" type="object" 
+                                                class="btn-danger" icon="fa-times"
+                                                invisible="state != 'pending'"
+                                                groups="sales_team.group_sale_manager"/>
+                                    </list>
+                                </field>
+                            </group>
+                            
+                            <!-- KYC Summary -->
                             <group>
-                                <group string="KYC Document">
-                                    <field name="kyc_doc" filename="kyc_doc_filename"/>
-                                    <field name="kyc_doc_filename" invisible="1"/>
+                                <group string="KYC Status">
                                     <field name="kyc_status" widget="badge"
                                            decoration-success="kyc_status == 'verified'"
                                            decoration-warning="kyc_status == 'pending'"
                                            decoration-danger="kyc_status == 'rejected'"
                                            decoration-info="kyc_status == 'not_submitted'"/>
+                                    <field name="kyc_documents_complete" readonly="1"/>
+                                    <field name="kyc_documents_approved" readonly="1"/>
                                     <field name="kyc_verified" invisible="1"/>
                                     <field name="can_do_commercial_actions" string="Can Publish Products" 
                                            widget="boolean" readonly="1"/>
@@ -156,12 +360,12 @@
                             </group>
                             
                             <!-- KYC Action Buttons for Managers -->
-                            <group string="KYC Actions" groups="sales_team.group_sale_manager"
-                                   invisible="not kyc_doc">
-                                <div class="d-flex gap-2">
-                                    <button name="action_verify_kyc" string="✓ Verify KYC"
+                            <group string="Quick Actions" groups="sales_team.group_sale_manager"
+                                   invisible="kyc_pending_documents == 0 and not kyc_document_ids">
+                                <div class="d-flex gap-2 flex-wrap">
+                                    <button name="action_verify_kyc" string="✓ Verify All KYC"
                                             type="object" class="btn btn-success"
-                                            invisible="kyc_verified"/>
+                                            invisible="kyc_verified or kyc_pending_documents == 0"/>
                                     <button name="action_reject_kyc" string="✗ Reject KYC"
                                             type="object" class="btn btn-danger"
                                             invisible="kyc_verified"/>
@@ -171,6 +375,24 @@
                                             invisible="not kyc_verified"
                                             confirm="This will clear the current KYC documents and require the seller to resubmit. Continue?"/>
                                 </div>
+                            </group>
+                        </page>
+                        
+                        <!-- Tab 2: Seller Information Summary (For Admin Review) -->
+                        <page string="Seller Info" name="seller_info" groups="sales_team.group_sale_manager">
+                            <group>
+                                <group string="Registration Details">
+                                    <field name="create_date" string="Registration Date" readonly="1"/>
+                                    <field name="registration_source" readonly="1" invisible="not registration_source"/>
+                                    <field name="registration_ip" readonly="1" invisible="not registration_ip"/>
+                                    <field name="terms_accepted" readonly="1"/>
+                                    <field name="terms_accepted_date" readonly="1" invisible="not terms_accepted_date"/>
+                                </group>
+                                <group string="Approval Info">
+                                    <field name="approved_date" readonly="1"/>
+                                    <field name="approved_by" readonly="1"/>
+                                    <field name="rejection_reason" readonly="1" invisible="not rejection_reason"/>
+                                </group>
                             </group>
                         </page>
                         
@@ -420,10 +642,211 @@
         <field name="res_model">marketplace.seller</field>
         <field name="view_mode">list,kanban,form</field>
         <field name="domain">[('state', '=', 'pending')]</field>
+        <field name="context">{'search_default_pending': 1, 'form_view_ref': 'smart_ecommerce_extension.view_marketplace_seller_form'}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 No pending seller approvals
             </p>
+            <p>All seller applications have been reviewed.</p>
+        </field>
+    </record>
+    
+    <!-- KYC Review Action - For Admin to review pending KYC documents -->
+    <record id="action_marketplace_sellers_kyc_review" model="ir.actions.act_window">
+        <field name="name">KYC Review Queue</field>
+        <field name="res_model">marketplace.seller</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('state', '=', 'approved'), ('kyc_verified', '=', False), '|', ('kyc_doc', '!=', False), ('kyc_document_ids', '!=', False)]</field>
+        <field name="context">{'search_default_kyc_needs_review': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No KYC documents pending review
+            </p>
+            <p>All KYC documents have been verified.</p>
+        </field>
+    </record>
+    
+    <!-- ============================================================ -->
+    <!-- KYC DOCUMENT VIEWS -->
+    <!-- ============================================================ -->
+    
+    <!-- KYC Document List View -->
+    <record id="view_seller_kyc_document_list" model="ir.ui.view">
+        <field name="name">marketplace.seller.kyc.document.list</field>
+        <field name="model">marketplace.seller.kyc.document</field>
+        <field name="arch" type="xml">
+            <list string="KYC Documents" 
+                  decoration-success="state == 'approved'"
+                  decoration-warning="state == 'pending'"
+                  decoration-danger="state == 'rejected'">
+                <field name="seller_id"/>
+                <field name="document_type_id"/>
+                <field name="filename"/>
+                <field name="file" filename="filename" widget="binary"/>
+                <field name="upload_date"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'approved'"
+                       decoration-warning="state == 'pending'"
+                       decoration-danger="state == 'rejected'"/>
+                <field name="reviewed_by"/>
+                <field name="rejection_reason" optional="hide"/>
+                <button name="action_approve" string="Approve" type="object" 
+                        class="btn-success" icon="fa-check"
+                        invisible="state != 'pending'"/>
+                <button name="action_reject" string="Reject" type="object" 
+                        class="btn-danger" icon="fa-times"
+                        invisible="state != 'pending'"/>
+            </list>
+        </field>
+    </record>
+    
+    <!-- KYC Document Form View -->
+    <record id="view_seller_kyc_document_form" model="ir.ui.view">
+        <field name="name">marketplace.seller.kyc.document.form</field>
+        <field name="model">marketplace.seller.kyc.document</field>
+        <field name="arch" type="xml">
+            <form string="KYC Document">
+                <header>
+                    <button name="action_approve" string="Approve Document" type="object"
+                            class="btn-success" invisible="state != 'pending'"/>
+                    <button name="action_reject" string="Reject Document" type="object"
+                            class="btn-danger" invisible="state != 'pending'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="pending,approved"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-warning" role="alert" invisible="state != 'pending'">
+                        <strong><i class="fa fa-clock-o"/> Pending Review</strong> - 
+                        Review this document and approve or reject.
+                    </div>
+                    <div class="alert alert-success" role="alert" invisible="state != 'approved'">
+                        <strong><i class="fa fa-check-circle"/> Approved</strong> - 
+                        Document verified by <field name="reviewed_by" readonly="1" class="d-inline"/>
+                        on <field name="reviewed_date" readonly="1" widget="datetime" class="d-inline"/>
+                    </div>
+                    <div class="alert alert-danger" role="alert" invisible="state != 'rejected'">
+                        <strong><i class="fa fa-times-circle"/> Rejected</strong>
+                        <p class="mb-0 mt-2"><field name="rejection_reason" readonly="1"/></p>
+                    </div>
+                    
+                    <group>
+                        <group string="Document Information">
+                            <field name="seller_id" readonly="1"/>
+                            <field name="document_type_id"/>
+                            <field name="upload_date" readonly="1"/>
+                            <field name="expiry_date"/>
+                        </group>
+                        <group string="Document File">
+                            <field name="file" filename="filename" widget="binary"/>
+                            <field name="filename"/>
+                        </group>
+                    </group>
+                    
+                    <group string="Admin Notes" groups="sales_team.group_sale_manager">
+                        <field name="notes" widget="text"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    
+    <!-- KYC Document Search View -->
+    <record id="view_seller_kyc_document_search" model="ir.ui.view">
+        <field name="name">marketplace.seller.kyc.document.search</field>
+        <field name="model">marketplace.seller.kyc.document</field>
+        <field name="arch" type="xml">
+            <search string="Search KYC Documents">
+                <field name="seller_id"/>
+                <field name="document_type_id"/>
+                <separator/>
+                <filter string="Pending" name="pending" domain="[('state', '=', 'pending')]"/>
+                <filter string="Approved" name="approved" domain="[('state', '=', 'approved')]"/>
+                <filter string="Rejected" name="rejected" domain="[('state', '=', 'rejected')]"/>
+                <separator/>
+                <group expand="0" string="Group By">
+                    <filter string="Seller" name="group_seller" context="{'group_by': 'seller_id'}"/>
+                    <filter string="Document Type" name="group_type" context="{'group_by': 'document_type_id'}"/>
+                    <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    
+    <!-- KYC Documents Action - All Documents -->
+    <record id="action_seller_kyc_documents" model="ir.actions.act_window">
+        <field name="name">KYC Documents</field>
+        <field name="res_model">marketplace.seller.kyc.document</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No KYC documents uploaded yet
+            </p>
+        </field>
+    </record>
+    
+    <!-- KYC Documents Action - Pending Review -->
+    <record id="action_seller_kyc_documents_pending" model="ir.actions.act_window">
+        <field name="name">Pending KYC Documents</field>
+        <field name="res_model">marketplace.seller.kyc.document</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('state', '=', 'pending')]</field>
+        <field name="context">{'search_default_pending': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No KYC documents pending review
+            </p>
+            <p>All documents have been reviewed.</p>
+        </field>
+    </record>
+    
+    <!-- KYC Document Type Views -->
+    <record id="view_seller_kyc_document_type_list" model="ir.ui.view">
+        <field name="name">marketplace.seller.kyc.document.type.list</field>
+        <field name="model">marketplace.seller.kyc.document.type</field>
+        <field name="arch" type="xml">
+            <list string="KYC Document Types" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="required"/>
+                <field name="description"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+    
+    <!-- KYC Document Type Action -->
+    <record id="action_seller_kyc_document_types" model="ir.actions.act_window">
+        <field name="name">KYC Document Types</field>
+        <field name="res_model">marketplace.seller.kyc.document.type</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first KYC document type
+            </p>
+            <p>Define the types of documents sellers must upload for KYC verification.</p>
+        </field>
+    </record>
+    
+    <!-- KYC Document Reject Wizard View -->
+    <record id="view_seller_kyc_document_reject_wizard_form" model="ir.ui.view">
+        <field name="name">marketplace.seller.kyc.document.reject.wizard.form</field>
+        <field name="model">marketplace.seller.kyc.document.reject.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Reject KYC Document">
+                <div class="alert alert-warning" role="alert">
+                    <i class="fa fa-exclamation-triangle"/> 
+                    Please provide a clear reason for rejection so the seller can correct and resubmit.
+                </div>
+                <group>
+                    <field name="document_id" readonly="1"/>
+                    <field name="reason" widget="text" 
+                           placeholder="e.g., 'Document is expired', 'Image is unclear', 'Wrong document type'..."/>
+                </group>
+                <footer>
+                    <button name="action_reject" string="Reject Document" type="object" class="btn-danger"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
         </field>
     </record>
     
