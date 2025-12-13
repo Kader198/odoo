@@ -516,5 +516,155 @@
 </div>
             </field>
         </record>
+
+        <!-- ============================================================ -->
+        <!-- COMMISSION & PAYOUT EMAIL TEMPLATES -->
+        <!-- ============================================================ -->
+
+        <!-- Email: Payout Completed - Seller Notification -->
+        <record id="email_payout_completed" model="mail.template">
+            <field name="name">Payout: Settlement Completed (Seller Notification)</field>
+            <field name="model_id" ref="model_seller_commission_payout"/>
+            <field name="subject">💰 Payout Completed - {{ object.name }}</field>
+            <field name="email_from">{{ (user.company_id.email or user.email_formatted) }}</field>
+            <field name="email_to">{{ object.seller_id.email }}</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px; font-size: 13px;">
+    <table border="0" width="100%" cellpadding="0" bgcolor="#ededed" style="padding: 20px; background-color: #ededed; border-collapse:collapse;">
+        <tr>
+            <td valign="top" style="padding: 10px;">
+                <table width="600" border="0" cellpadding="0" bgcolor="#ffffff" style="margin: 0 auto; background-color: #ffffff; border: 1px solid #e1e1e1; border-radius: 8px;">
+                    <tr>
+                        <td style="padding: 20px 30px; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); border-radius: 8px 8px 0 0;">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 24px;">💰 Payout Completed!</h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 30px;">
+                            <p>Dear {{ object.seller_id.user_id.name or object.seller_id.company_name }},</p>
+                            
+                            <p>Great news! Your commission payout has been processed successfully.</p>
+                            
+                            <div style="background-color: #d4edda; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+                                <h2 style="margin: 0 0 10px; color: #155724; font-size: 32px;">
+                                    {{ object.total_amount }} {{ object.currency_id.symbol }}
+                                </h2>
+                                <p style="margin: 0; color: #155724;">Total Payout Amount</p>
+                            </div>
+                            
+                            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                                <tr>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">Reference:</td>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee;">{{ object.name }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">Payment Method:</td>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee;">{{ dict(object._fields['payout_method'].selection).get(object.payout_method, object.payout_method) }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">Payout Date:</td>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee;">{{ object.payout_date }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">Orders Included:</td>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee;">{{ object.commission_count }} commission(s)</td>
+                                </tr>
+                                <tr t-if="object.period_start and object.period_end">
+                                    <td style="padding: 10px; font-weight: bold;">Period:</td>
+                                    <td style="padding: 10px;">{{ object.period_start }} to {{ object.period_end }}</td>
+                                </tr>
+                            </table>
+                            
+                            <p>The payment has been sent to your registered bank account:</p>
+                            <ul style="margin: 10px 0; padding-left: 20px;">
+                                <li><strong>Bank:</strong> {{ object.bank_name or 'N/A' }}</li>
+                                <li><strong>Account:</strong> {{ object.bank_account or 'N/A' }}</li>
+                            </ul>
+                            
+                            <p>Please allow 1-3 business days for the funds to appear in your account.</p>
+                            
+                            <div style="text-align: center; margin-top: 30px;">
+                                <a href="{{ object.env['ir.config_parameter'].sudo().get_param('web.base.url') }}/my/seller/commissions"
+                                   style="display: inline-block; padding: 12px 30px; background: #714B67; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                                    View Commission History
+                                </a>
+                            </div>
+                            
+                            <p style="margin-top: 30px;">Thank you for selling with us!<br/>The Marketplace Team</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</div>
+            </field>
+        </record>
+
+        <!-- Email: New Order Notification to Seller -->
+        <record id="email_seller_new_order" model="mail.template">
+            <field name="name">Order: New Order (Seller Notification)</field>
+            <field name="model_id" ref="sale.model_sale_order"/>
+            <field name="subject">🛒 New Order Received: {{ object.name }}</field>
+            <field name="email_from">{{ (user.company_id.email or user.email_formatted) }}</field>
+            <field name="email_to">{{ object.seller_id.email }}</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px; font-size: 13px;">
+    <table border="0" width="100%" cellpadding="0" bgcolor="#ededed" style="padding: 20px; background-color: #ededed; border-collapse:collapse;">
+        <tr>
+            <td valign="top" style="padding: 10px;">
+                <table width="600" border="0" cellpadding="0" bgcolor="#ffffff" style="margin: 0 auto; background-color: #ffffff; border: 1px solid #e1e1e1; border-radius: 8px;">
+                    <tr>
+                        <td style="padding: 20px 30px; background: linear-gradient(135deg, #17a2b8 0%, #007bff 100%); border-radius: 8px 8px 0 0;">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 24px;">🛒 New Order Received!</h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 30px;">
+                            <p>Dear {{ object.seller_id.user_id.name or object.seller_id.company_name }},</p>
+                            
+                            <p>Great news! You have received a new order.</p>
+                            
+                            <div style="background-color: #e3f2fd; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                                <h3 style="margin: 0 0 10px; color: #1976d2;">Order {{ object.name }}</h3>
+                                <p style="margin: 0; font-size: 24px; font-weight: bold; color: #1976d2;">
+                                    {{ object.amount_total }} {{ object.currency_id.symbol }}
+                                </p>
+                            </div>
+                            
+                            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                                <tr>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">Customer:</td>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee;">{{ object.partner_id.name }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">Order Date:</td>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee;">{{ object.date_order }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px; font-weight: bold;">Shipping Address:</td>
+                                    <td style="padding: 10px;">{{ object.partner_shipping_id.city or 'N/A' }}, {{ object.partner_shipping_id.country_id.name or '' }}</td>
+                                </tr>
+                            </table>
+                            
+                            <p><strong>Action Required:</strong> Please process this order promptly.</p>
+                            
+                            <div style="text-align: center; margin-top: 30px;">
+                                <a href="{{ object.env['ir.config_parameter'].sudo().get_param('web.base.url') }}/my/seller/orders/{{ object.id }}"
+                                   style="display: inline-block; padding: 12px 30px; background: #17a2b8; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                                    View Order Details
+                                </a>
+                            </div>
+                            
+                            <p style="margin-top: 30px;">Happy selling!<br/>The Marketplace Team</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</div>
+            </field>
+        </record>
     </data>
 </odoo>

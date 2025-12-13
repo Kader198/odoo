@@ -254,17 +254,26 @@ class ProductTemplate(models.Model):
         return True
 
     def action_approve_product(self):
-        """Approve product for publication"""
+        """Approve product for publication - auto-publishes if seller is approved and KYC verified"""
         for product in self:
             if product.product_state != 'pending':
                 raise UserError(_('Only pending products can be approved.'))
             
-            product.write({
+            vals = {
                 'product_state': 'approved',
                 'approved_date': fields.Datetime.now(),
                 'approved_by': self.env.user.id,
                 'rejection_reason': False,
-            })
+            }
+            
+            # Auto-publish if seller can do commercial actions (approved + KYC verified)
+            if product.seller_id and product.seller_id.can_do_commercial_actions:
+                vals['is_published'] = True
+                product.message_post(body=_('Product approved and auto-published to website.'))
+            else:
+                product.message_post(body=_('Product approved. It will be published when seller completes verification.'))
+            
+            product.write(vals)
             
             # Notify seller
             product._notify_seller_product_approved()
@@ -384,6 +393,10 @@ class ProductTemplate(models.Model):
 
     def write(self, vals):
         """Override write to check KYC and product state before publishing"""
+        # Skip publishing check if context flag is set (for portal updates)
+        if self.env.context.get('skip_publishing_check'):
+            return super().write(vals)
+        
         # Check if trying to publish
         if vals.get('is_published'):
             for product in self:

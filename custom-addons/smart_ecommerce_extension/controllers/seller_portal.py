@@ -737,15 +737,19 @@ class SellerPortal(CustomerPortal):
             return request.redirect('/my/seller/products')
         
         try:
+            # Handle warranty_months with proper empty string handling
+            warranty_str = kw.get('warranty_months', '0')
+            warranty_months = int(warranty_str) if warranty_str else 0
+            
             vals = {
                 'name': kw.get('name', product.name),
-                'list_price': float(kw.get('list_price', product.list_price)),
+                'list_price': float(kw.get('list_price', product.list_price) or 0),
                 'description_sale': kw.get('description', ''),
                 'brand': kw.get('brand', ''),
                 'product_model': kw.get('product_model', ''),
                 'seller_sku': kw.get('seller_sku', ''),
                 'product_condition': kw.get('product_condition', 'new'),
-                'warranty_months': int(kw.get('warranty_months', 0)),
+                'warranty_months': warranty_months,
             }
             
             # Handle image upload
@@ -766,13 +770,16 @@ class SellerPortal(CustomerPortal):
                 vals['product_state'] = 'draft'
                 vals['rejection_reason'] = False
             
-            product.write(vals)
+            # Use with_context to skip publishing validation during update
+            # This allows sellers to update pending/draft products without KYC constraints
+            product.with_context(skip_publishing_check=True).write(vals)
             
             return request.redirect('/my/seller/products/%s?success=updated' % product.id)
             
         except Exception as e:
             _logger.error(f"Product update error: {str(e)}", exc_info=True)
-            return request.redirect('/my/seller/products/%s?error=update_failed' % product.id)
+            error_msg = str(e) if len(str(e)) < 100 else 'update_failed'
+            return request.redirect('/my/seller/products/%s?error=%s' % (product.id, error_msg))
 
     @http.route('/my/seller/products/<int:product_id>/submit', type='http', auth='user', website=True, methods=['POST'])
     def seller_product_submit(self, product_id, **kw):

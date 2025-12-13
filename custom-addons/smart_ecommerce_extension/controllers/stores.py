@@ -62,13 +62,14 @@ class StoresController(http.Controller):
         if seller.state != 'approved' or not seller.can_do_commercial_actions or not seller.active:
             return request.not_found()
         
-        # Get published products for this seller
+        # Get published and approved products for this seller
         Product = request.env['product.template'].sudo()
         domain = [
             ('seller_id', '=', seller.id),
             ('is_published', '=', True),
+            ('product_state', '=', 'approved'),
             ('sale_ok', '=', True),
-            ('website_published', '=', True),
+            ('active', '=', True),
         ]
         
         # Get total count

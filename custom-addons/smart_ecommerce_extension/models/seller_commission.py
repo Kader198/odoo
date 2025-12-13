@@ -137,7 +137,7 @@ class SellerCommission(models.Model):
 
 class SellerCommissionPayout(models.Model):
     """
-    Batch payout to sellers
+    Batch payout to sellers with automatic settlement
     """
     _name = 'seller.commission.payout'
     _description = 'Seller Commission Payout'
@@ -170,15 +170,18 @@ class SellerCommissionPayout(models.Model):
         compute='_compute_totals',
         store=True,
     )
-    commission_ids = fields.One2many(
+    commission_ids = fields.Many2many(
         'seller.commission',
-        'payout_reference',
+        'payout_commission_rel',
+        'payout_id',
+        'commission_id',
         string='Included Commissions',
-        domain="[('state', '=', 'confirmed')]",
+        domain="[('state', '=', 'confirmed'), ('seller_id', '=', seller_id)]",
     )
     commission_count = fields.Integer(
         string='# Commissions',
         compute='_compute_totals',
+        store=True,
     )
     
     # Status
@@ -200,6 +203,10 @@ class SellerCommissionPayout(models.Model):
     bank_name = fields.Char(related='seller_id.bank_name', readonly=True)
     bank_account = fields.Char(related='seller_id.bank_account', readonly=True)
     
+    # Settlement period
+    period_start = fields.Date(string='Period Start')
+    period_end = fields.Date(string='Period End')
+    
     # Notes
     notes = fields.Text(string='Notes')
 
@@ -210,12 +217,23 @@ class SellerCommissionPayout(models.Model):
                 vals['name'] = self.env['ir.sequence'].next_by_code('seller.commission.payout') or _('New')
         return super().create(vals_list)
 
-    @api.depends('commission_ids', 'commission_ids.seller_earnings')
+    @api.depends('commission_ids', 'commission_ids.seller_earnings', 'commission_ids.state')
     def _compute_totals(self):
         for record in self:
-            commissions = record.commission_ids.filtered(lambda c: c.state == 'confirmed')
+            commissions = record.commission_ids.filtered(lambda c: c.state in ('confirmed', 'paid'))
             record.total_amount = sum(commissions.mapped('seller_earnings'))
             record.commission_count = len(commissions)
+
+    def action_add_all_confirmed(self):
+        """Add all confirmed commissions for this seller to the payout"""
+        self.ensure_one()
+        confirmed_commissions = self.env['seller.commission'].search([
+            ('seller_id', '=', self.seller_id.id),
+            ('state', '=', 'confirmed'),
+        ])
+        if confirmed_commissions:
+            self.commission_ids = [(6, 0, confirmed_commissions.ids)]
+        return True
 
     def action_confirm(self):
         """Confirm payout"""
@@ -241,23 +259,83 @@ class SellerCommissionPayout(models.Model):
         self.seller_id.message_post(
             body=_('Payout of %s %s has been processed. Reference: %s') % (
                 self.total_amount, self.currency_id.symbol, self.name
-            )
+            ),
+            subject=_('Payout Completed'),
         )
+        
+        # Send notification email
+        template = self.env.ref('smart_ecommerce_extension.email_payout_completed', raise_if_not_found=False)
+        if template:
+            template.send_mail(self.id)
 
     def action_cancel(self):
         """Cancel payout"""
         if self.state == 'paid':
             raise UserError(_('Cannot cancel a completed payout.'))
-        # Reset commissions
-        self.commission_ids.write({
+        # Reset commissions state to confirmed
+        self.commission_ids.filtered(lambda c: c.state != 'paid').write({
             'payout_reference': False,
         })
         self.write({'state': 'cancelled'})
 
+    @api.model
+    def create_settlement_for_seller(self, seller, payout_method='bank_transfer'):
+        """
+        Create automatic settlement payout for a seller.
+        Includes all confirmed commissions.
+        """
+        confirmed_commissions = self.env['seller.commission'].search([
+            ('seller_id', '=', seller.id),
+            ('state', '=', 'confirmed'),
+        ])
+        
+        if not confirmed_commissions:
+            return False
+        
+        # Find date range
+        dates = confirmed_commissions.mapped('order_date')
+        period_start = min(dates).date() if dates else fields.Date.today()
+        period_end = max(dates).date() if dates else fields.Date.today()
+        
+        payout = self.create({
+            'seller_id': seller.id,
+            'payout_method': payout_method,
+            'commission_ids': [(6, 0, confirmed_commissions.ids)],
+            'period_start': period_start,
+            'period_end': period_end,
+            'notes': _('Automatic settlement for period %s to %s') % (period_start, period_end),
+        })
+        
+        return payout
+
+    @api.model
+    def run_automatic_settlements(self):
+        """
+        Cron job to create automatic settlements for all sellers with confirmed commissions.
+        Called periodically (e.g., weekly or monthly).
+        """
+        sellers_with_commissions = self.env['seller.commission'].search([
+            ('state', '=', 'confirmed'),
+        ]).mapped('seller_id')
+        
+        payouts_created = 0
+        for seller in sellers_with_commissions:
+            # Check if seller has bank details
+            if not seller.bank_account:
+                continue
+            
+            payout = self.create_settlement_for_seller(seller)
+            if payout:
+                payouts_created += 1
+                # Auto-confirm the payout
+                payout.action_confirm()
+        
+        return payouts_created
+
 
 class SaleOrderCommissionMixin(models.Model):
     """
-    Mixin to add commission computation to sale orders
+    Mixin to add commission computation to sale orders with full lifecycle tracking
     """
     _inherit = 'sale.order'
 
@@ -270,18 +348,35 @@ class SaleOrderCommissionMixin(models.Model):
         string='Total Commission',
         compute='_compute_commission_totals',
         currency_field='currency_id',
+        store=True,
     )
     total_seller_earnings = fields.Monetary(
         string='Total Seller Earnings',
         compute='_compute_commission_totals',
         currency_field='currency_id',
+        store=True,
     )
+    
+    # Order lifecycle tracking for sellers
+    seller_order_status = fields.Selection([
+        ('new', 'New Order'),
+        ('processing', 'Processing'),
+        ('shipped', 'Shipped'),
+        ('delivered', 'Delivered'),
+        ('cancelled', 'Cancelled'),
+    ], string='Seller Order Status', default='new', tracking=True)
+    
+    shipped_date = fields.Datetime(string='Shipped Date', readonly=True)
+    delivered_date = fields.Datetime(string='Delivered Date', readonly=True)
+    tracking_number = fields.Char(string='Tracking Number')
+    tracking_url = fields.Char(string='Tracking URL')
 
-    @api.depends('commission_ids', 'commission_ids.commission_amount', 'commission_ids.seller_earnings')
+    @api.depends('commission_ids', 'commission_ids.commission_amount', 'commission_ids.seller_earnings', 'commission_ids.state')
     def _compute_commission_totals(self):
         for order in self:
-            order.total_commission = sum(order.commission_ids.mapped('commission_amount'))
-            order.total_seller_earnings = sum(order.commission_ids.mapped('seller_earnings'))
+            active_commissions = order.commission_ids.filtered(lambda c: c.state != 'cancelled')
+            order.total_commission = sum(active_commissions.mapped('commission_amount'))
+            order.total_seller_earnings = sum(active_commissions.mapped('seller_earnings'))
 
     def _create_seller_commissions(self):
         """
@@ -299,8 +394,10 @@ class SaleOrderCommissionMixin(models.Model):
                     seller_amounts[seller.id] = {
                         'seller': seller,
                         'amount': 0.0,
+                        'lines': [],
                     }
                 seller_amounts[seller.id]['amount'] += line.price_subtotal
+                seller_amounts[seller.id]['lines'].append(line.id)
         
         # Create commission records
         Commission = self.env['seller.commission']
@@ -322,7 +419,18 @@ class SaleOrderCommissionMixin(models.Model):
                         'order_amount': amount,
                         'commission_rate': seller.commission_rate,
                         'state': 'pending',
+                        'notes': _('Auto-created on order confirmation for %d product line(s)') % len(data['lines']),
                     })
+                    # Notify seller about new order
+                    seller.message_post(
+                        body=_('New order %s with %d product(s) worth %s. Commission: %s%%') % (
+                            self.name,
+                            len(data['lines']),
+                            amount,
+                            seller.commission_rate
+                        ),
+                        subject=_('New Order Received'),
+                    )
         
         return True
 
@@ -332,5 +440,45 @@ class SaleOrderCommissionMixin(models.Model):
         
         for order in self:
             order._create_seller_commissions()
+            order.write({'seller_order_status': 'processing'})
+        
+        return result
+    
+    def action_mark_shipped(self):
+        """Mark order as shipped - for seller use"""
+        for order in self:
+            order.write({
+                'seller_order_status': 'shipped',
+                'shipped_date': fields.Datetime.now(),
+            })
+            # Notify customer
+            order.message_post(body=_('Order has been shipped.'))
+        return True
+    
+    def action_mark_delivered(self):
+        """Mark order as delivered - confirms commissions for settlement"""
+        for order in self:
+            order.write({
+                'seller_order_status': 'delivered',
+                'delivered_date': fields.Datetime.now(),
+            })
+            # Confirm all pending commissions for this order
+            pending_commissions = order.commission_ids.filtered(lambda c: c.state == 'pending')
+            if pending_commissions:
+                pending_commissions.action_confirm()
+                order.message_post(body=_('Order delivered. Commissions confirmed for settlement.'))
+        return True
+    
+    def action_cancel(self):
+        """Override to cancel commissions when order is cancelled"""
+        result = super().action_cancel()
+        
+        for order in self:
+            order.write({'seller_order_status': 'cancelled'})
+            # Cancel all non-paid commissions
+            cancellable_commissions = order.commission_ids.filtered(lambda c: c.state not in ('paid', 'cancelled'))
+            if cancellable_commissions:
+                cancellable_commissions.write({'state': 'cancelled'})
+                order.message_post(body=_('Order cancelled. Associated commissions have been cancelled.'))
         
         return result

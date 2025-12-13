@@ -582,7 +582,7 @@ class MarketplaceSeller(models.Model):
         self.message_post(body=_('Seller profile submitted for approval.'))
 
     def action_approve(self):
-        """Approve seller - sets state, verifies KYC, and enables commercial actions"""
+        """Approve seller - sets state, verifies KYC, enables commercial actions, and auto-publishes approved products"""
         self.ensure_one()
         self.write({
             'state': 'approved',
@@ -604,6 +604,12 @@ class MarketplaceSeller(models.Model):
             })
         
         self.message_post(body=_('Seller approved by %s. KYC verified and commercial actions enabled.') % self.env.user.name)
+        
+        # Auto-publish all approved products for this seller
+        approved_products = self.product_ids.filtered(lambda p: p.product_state == 'approved' and not p.is_published)
+        if approved_products:
+            approved_products.write({'is_published': True})
+            self.message_post(body=_('Auto-published %d approved product(s) on website.') % len(approved_products))
         
         # Send notification email
         template = self.env.ref('smart_ecommerce_extension.email_seller_approved', raise_if_not_found=False)
@@ -893,6 +899,48 @@ class MarketplaceSeller(models.Model):
                 seller.website_url = f'{base_url}/store/{slug}'
             else:
                 seller.website_url = False
+
+    # ==========================================
+    # AUTOMATIC PAYOUT METHODS
+    # ==========================================
+
+    @api.model
+    def _run_automatic_payouts(self):
+        """
+        Cron job to process automatic payouts for sellers.
+        Creates payout batches for confirmed commissions.
+        """
+        CommissionPayout = self.env['seller.commission.payout']
+        Commission = self.env['seller.commission']
+        
+        # Find all approved sellers
+        approved_sellers = self.search([('state', '=', 'approved')])
+        
+        for seller in approved_sellers:
+            # Find confirmed commissions for this seller
+            confirmed_commissions = Commission.search([
+                ('seller_id', '=', seller.id),
+                ('state', '=', 'confirmed'),
+            ])
+            
+            if confirmed_commissions:
+                # Create a payout batch
+                payout = CommissionPayout.create({
+                    'seller_id': seller.id,
+                    'payout_method': 'bank_transfer',  # Default method
+                    'commission_ids': [(6, 0, confirmed_commissions.ids)],
+                    'period_start': min(confirmed_commissions.mapped('order_date')).date() if confirmed_commissions.mapped('order_date') else fields.Date.today(),
+                    'period_end': fields.Date.today(),
+                })
+                
+                # Confirm the payout
+                payout.action_confirm()
+                
+                seller.message_post(
+                    body=_('Automatic payout batch created: %s for %d commission(s)') % (
+                        payout.name, len(confirmed_commissions)
+                    )
+                )
 
 
 class MarketplaceSellerRejectWizard(models.TransientModel):

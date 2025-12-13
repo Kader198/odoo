@@ -39,5 +39,15 @@ Contributing to Odoo
 ./run_odoo.sh -u smart_ecommerce_extension
 
 
+# Basic usage - creates a timestamped copy
+./copy_db.sh odoo_db
+# Creates: odoo_db_copy_20251213_161500
+
+# With custom target name
+./copy_db.sh odoo_db my_backup
+
+# Create a staging copy
+./copy_db.sh odoo_db odoo_staging
+
 
 
