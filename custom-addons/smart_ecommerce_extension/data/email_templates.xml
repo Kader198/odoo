@@ -10,7 +10,7 @@
             <field name="name">Seller: New Registration (Admin Notification)</field>
             <field name="model_id" ref="smart_marketplace_core.model_marketplace_seller"/>
             <field name="subject">New Seller Registration: {{ object.company_name }}</field>
-            <field name="email_from">{{ (object.company_id.email or user.email_formatted) }}</field>
+            <field name="email_from">{{ (user.company_id.email or user.email_formatted) }}</field>
             <field name="email_to">{{ ctx.get('admin_email', '') }}</field>
             <field name="body_html" type="html">
 <div style="margin: 0px; padding: 0px; font-size: 13px;">
@@ -82,7 +82,7 @@
             <field name="name">Seller: Application Submitted Confirmation</field>
             <field name="model_id" ref="smart_marketplace_core.model_marketplace_seller"/>
             <field name="subject">Application Received - {{ object.company_name }}</field>
-            <field name="email_from">{{ (object.company_id.email or user.email_formatted) }}</field>
+            <field name="email_from">{{ (user.company_id.email or user.email_formatted) }}</field>
             <field name="email_to">{{ object.email }}</field>
             <field name="body_html" type="html">
 <div style="margin: 0px; padding: 0px; font-size: 13px;">
@@ -138,7 +138,7 @@
             <field name="name">Seller: Application Approved</field>
             <field name="model_id" ref="smart_marketplace_core.model_marketplace_seller"/>
             <field name="subject">🎉 Congratulations! Your Seller Account is Approved</field>
-            <field name="email_from">{{ (object.company_id.email or user.email_formatted) }}</field>
+            <field name="email_from">{{ (user.company_id.email or user.email_formatted) }}</field>
             <field name="email_to">{{ object.email }}</field>
             <field name="body_html" type="html">
 <div style="margin: 0px; padding: 0px; font-size: 13px;">
@@ -196,7 +196,7 @@
             <field name="name">Seller: Application Rejected</field>
             <field name="model_id" ref="smart_marketplace_core.model_marketplace_seller"/>
             <field name="subject">Seller Application Status Update</field>
-            <field name="email_from">{{ (object.company_id.email or user.email_formatted) }}</field>
+            <field name="email_from">{{ (user.company_id.email or user.email_formatted) }}</field>
             <field name="email_to">{{ object.email }}</field>
             <field name="body_html" type="html">
 <div style="margin: 0px; padding: 0px; font-size: 13px;">
@@ -247,7 +247,7 @@
             <field name="name">Seller: KYC Documents Verified</field>
             <field name="model_id" ref="smart_marketplace_core.model_marketplace_seller"/>
             <field name="subject">✓ KYC Verification Complete - {{ object.company_name }}</field>
-            <field name="email_from">{{ (object.company_id.email or user.email_formatted) }}</field>
+            <field name="email_from">{{ (user.company_id.email or user.email_formatted) }}</field>
             <field name="email_to">{{ object.email }}</field>
             <field name="body_html" type="html">
 <div style="margin: 0px; padding: 0px; font-size: 13px;">
@@ -301,7 +301,7 @@
             <field name="name">Seller: KYC Documents Rejected</field>
             <field name="model_id" ref="smart_marketplace_core.model_marketplace_seller"/>
             <field name="subject">KYC Verification - Action Required</field>
-            <field name="email_from">{{ (object.company_id.email or user.email_formatted) }}</field>
+            <field name="email_from">{{ (user.company_id.email or user.email_formatted) }}</field>
             <field name="email_to">{{ object.email }}</field>
             <field name="body_html" type="html">
 <div style="margin: 0px; padding: 0px; font-size: 13px;">
@@ -356,7 +356,7 @@
             <field name="name">Product: New Submission (Admin Notification)</field>
             <field name="model_id" ref="product.model_product_template"/>
             <field name="subject">New Product Pending Approval: {{ object.name }}</field>
-            <field name="email_from">{{ (object.company_id.email or user.email_formatted) }}</field>
+            <field name="email_from">{{ (user.company_id.email or user.email_formatted) }}</field>
             <field name="body_html" type="html">
 <div style="margin: 0px; padding: 0px; font-size: 13px;">
     <table border="0" width="100%" cellpadding="0" bgcolor="#ededed" style="padding: 20px; background-color: #ededed; border-collapse:collapse;">
@@ -416,7 +416,7 @@
             <field name="name">Product: Approved (Seller Notification)</field>
             <field name="model_id" ref="product.model_product_template"/>
             <field name="subject">✅ Your Product Has Been Approved: {{ object.name }}</field>
-            <field name="email_from">{{ (object.company_id.email or user.email_formatted) }}</field>
+            <field name="email_from">{{ (user.company_id.email or user.email_formatted) }}</field>
             <field name="email_to">{{ object.seller_id.email }}</field>
             <field name="body_html" type="html">
 <div style="margin: 0px; padding: 0px; font-size: 13px;">
@@ -468,7 +468,7 @@
             <field name="name">Product: Rejected (Seller Notification)</field>
             <field name="model_id" ref="product.model_product_template"/>
             <field name="subject">Product Review Update: {{ object.name }}</field>
-            <field name="email_from">{{ (object.company_id.email or user.email_formatted) }}</field>
+            <field name="email_from">{{ (user.company_id.email or user.email_formatted) }}</field>
             <field name="email_to">{{ object.seller_id.email }}</field>
             <field name="body_html" type="html">
 <div style="margin: 0px; padding: 0px; font-size: 13px;">

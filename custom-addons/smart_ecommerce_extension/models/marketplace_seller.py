@@ -582,14 +582,28 @@ class MarketplaceSeller(models.Model):
         self.message_post(body=_('Seller profile submitted for approval.'))
 
     def action_approve(self):
-        """Approve seller"""
+        """Approve seller - sets state, verifies KYC, and enables commercial actions"""
         self.ensure_one()
         self.write({
             'state': 'approved',
             'approved_date': fields.Datetime.now(),
             'approved_by': self.env.user.id,
+            'kyc_verified': True,
+            'kyc_verified_date': fields.Date.today(),
+            'kyc_verified_by': self.env.user.id,
+            'can_do_commercial_actions': True,
         })
-        self.message_post(body=_('Seller approved by %s') % self.env.user.name)
+        
+        # Also approve any pending KYC documents
+        pending_docs = self.kyc_document_ids.filtered(lambda d: d.state == 'pending')
+        for doc in pending_docs:
+            doc.write({
+                'state': 'approved',
+                'reviewed_by': self.env.user.id,
+                'reviewed_date': fields.Datetime.now(),
+            })
+        
+        self.message_post(body=_('Seller approved by %s. KYC verified and commercial actions enabled.') % self.env.user.name)
         
         # Send notification email
         template = self.env.ref('smart_ecommerce_extension.email_seller_approved', raise_if_not_found=False)

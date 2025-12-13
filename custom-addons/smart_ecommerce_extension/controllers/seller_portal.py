@@ -13,6 +13,23 @@ _logger = logging.getLogger(__name__)
 class SellerPortal(CustomerPortal):
     """Portal controller for Marketplace Sellers"""
 
+    # ==========================================
+    # OVERRIDE PORTAL HOME - REDIRECT SELLERS
+    # ==========================================
+
+    @http.route(['/my', '/my/home'], type='http', auth='user', website=True)
+    def home(self, **kw):
+        """
+        Override portal home to redirect sellers directly to seller dashboard.
+        Non-sellers continue to the regular portal home.
+        """
+        seller = self._get_current_seller()
+        if seller:
+            # Sellers go directly to their dashboard
+            return request.redirect('/my/seller/dashboard')
+        # Non-sellers get the regular portal home
+        return super().home(**kw)
+
     def _prepare_home_portal_values(self, counters):
         """Add seller counters to portal home"""
         values = super()._prepare_home_portal_values(counters)
