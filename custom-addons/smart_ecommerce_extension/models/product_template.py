@@ -551,3 +551,37 @@ class ProductTemplate(models.Model):
         """, (limit,))
         return [row[0] for row in self.env.cr.fetchall()]
 
+    @api.model
+    def _search(self, domain, offset=0, limit=None, order=None):
+        """
+        Override search to filter out products from non-approved sellers on website.
+        Products without sellers are always visible.
+        Products with sellers are only visible if seller is approved and can do commercial actions.
+        """
+        # Check if this is a website context (has website in context or searching published products)
+        if self.env.context.get('website_id') or self.env.context.get('from_website'):
+            # Add filter for approved sellers only
+            # Allow products without sellers OR products from approved sellers
+            approved_seller_filter = [
+                '|',
+                ('seller_id', '=', False),
+                '&',
+                ('seller_id.state', '=', 'approved'),
+                ('seller_id.can_do_commercial_actions', '=', True),
+            ]
+            domain = list(domain) + approved_seller_filter
+        
+        return super()._search(domain, offset=offset, limit=limit, order=order)
+
+    def _is_visible_on_website(self):
+        """
+        Check if product should be visible on website.
+        Extends standard check to also verify seller is approved.
+        """
+        for product in self:
+            # If product has a seller, check seller status
+            if product.seller_id:
+                if product.seller_id.state != 'approved' or not product.seller_id.can_do_commercial_actions:
+                    return False
+        return True
+

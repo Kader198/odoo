@@ -1422,34 +1422,89 @@
     
     <template id="cart_summary_seller_breakdown" inherit_id="website_sale.total" name="Cart Summary Seller Breakdown">
         <xpath expr="//tr[@id='order_total']" position="before">
-            <!-- Seller breakdown section -->
-            <t t-set="cart_sellers" t-value="website_sale_order.order_line.mapped('product_id.product_tmpl_id.seller_id').filtered(lambda s: s.id) if website_sale_order else []"/>
-            <tr t-if="cart_sellers and len(cart_sellers) > 1" class="smart-seller-breakdown-row">
+            <!-- Seller breakdown section with commission using computed method -->
+            <t t-set="seller_breakdown" t-value="website_sale_order.get_cart_seller_breakdown() if website_sale_order else []"/>
+            
+            <tr t-if="seller_breakdown" class="smart-seller-breakdown-row">
                 <td colspan="3" class="border-0 ps-0 pt-0 pb-3">
                     <div class="small text-muted mb-2">
                         <i class="fa fa-store me-1" aria-hidden="true"/>Breakdown by Store:
                     </div>
-                    <t t-foreach="cart_sellers" t-as="breakdown_seller">
-                        <t t-set="seller_lines" t-value="website_sale_order.order_line.filtered(lambda l: l.product_id.product_tmpl_id.seller_id.id == breakdown_seller.id)"/>
-                        <t t-set="seller_subtotal" t-value="sum(seller_lines.mapped('price_subtotal'))"/>
-                        <div class="d-flex justify-content-between align-items-center py-1 px-2 rounded" style="background: rgba(113, 75, 103, 0.05);">
-                            <span class="small">
-                                <t t-if="breakdown_seller.store_logo">
-                                    <img t-att-src="'/web/image/marketplace.seller/%s/store_logo' % breakdown_seller.id" 
-                                         class="rounded-circle me-1" style="width: 16px; height: 16px; object-fit: cover;"
-                                         t-att-alt="breakdown_seller.company_name"/>
-                                </t>
-                                <t t-else="">
-                                    <i class="fa fa-store me-1 text-muted" aria-hidden="true"/>
-                                </t>
-                                <t t-esc="breakdown_seller.company_name"/>
-                                <span class="text-muted">(<t t-esc="len(seller_lines)"/>)</span>
-                            </span>
-                            <span class="small fw-bold" style="color: #714B67;">
-                                <t t-esc="seller_subtotal" t-options="{'widget': 'monetary', 'display_currency': website_sale_order.currency_id}"/>
-                            </span>
+                    <t t-foreach="seller_breakdown" t-as="seller_data">
+                        <div class="py-2 px-2 rounded mb-1" style="background: rgba(113, 75, 103, 0.05);">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="small">
+                                    <t t-if="seller_data.get('store_logo')">
+                                        <img t-att-src="'/web/image/marketplace.seller/%s/store_logo' % seller_data.get('seller_id')" 
+                                             class="rounded-circle me-1" style="width: 16px; height: 16px; object-fit: cover;"
+                                             t-att-alt="seller_data.get('seller_name')"/>
+                                    </t>
+                                    <t t-else="">
+                                        <i class="fa fa-store me-1 text-muted" aria-hidden="true"/>
+                                    </t>
+                                    <t t-esc="seller_data.get('seller_name')"/>
+                                    <span class="text-muted">(<t t-esc="seller_data.get('line_count')"/>)</span>
+                                </span>
+                                <span class="small fw-bold" style="color: #714B67;">
+                                    <t t-esc="seller_data.get('subtotal')" t-options="{'widget': 'monetary', 'display_currency': website_sale_order.currency_id}"/>
+                                </span>
+                            </div>
+                            <!-- Commission info per seller -->
+                            <t t-if="seller_data.get('commission_amount', 0) > 0">
+                                <div class="d-flex justify-content-between align-items-center mt-1 ps-3">
+                                    <span class="small text-muted">
+                                        <i class="fa fa-percent me-1" aria-hidden="true"/>Platform fee (<t t-esc="'%.1f' % seller_data.get('commission_rate', 0)"/>%)
+                                    </span>
+                                    <span class="small text-muted">
+                                        +<t t-esc="seller_data.get('commission_amount')" t-options="{'widget': 'monetary', 'display_currency': website_sale_order.currency_id}"/>
+                                    </span>
+                                </div>
+                            </t>
                         </div>
                     </t>
+                </td>
+            </tr>
+            
+            <!-- Platform Commission Total Row -->
+            <t t-if="website_sale_order and website_sale_order.cart_commission_total > 0">
+                <tr class="smart-commission-row">
+                    <td colspan="2" class="text-start border-0 py-2">
+                        <span class="small">
+                            <i class="fa fa-handshake-o me-1 text-info" aria-hidden="true"/>
+                            Platform Commission
+                            <span class="text-muted" title="This fee helps maintain the marketplace and ensures quality service">
+                                <i class="fa fa-info-circle ms-1" aria-hidden="true"/>
+                            </span>
+                        </span>
+                    </td>
+                    <td class="text-end border-0 py-2">
+                        <span class="small fw-semibold text-info">
+                            +<t t-esc="website_sale_order.cart_commission_total" t-options="{'widget': 'monetary', 'display_currency': website_sale_order.currency_id}"/>
+                        </span>
+                    </td>
+                </tr>
+            </t>
+        </xpath>
+        
+    </template>
+    
+    <!-- Add total with commission display -->
+    <template id="cart_total_with_commission" inherit_id="website_sale.total" name="Cart Total With Commission">
+        <xpath expr="//tr[@id='order_total']" position="after">
+            <!-- Use computed field from sale.order model -->
+            <tr t-if="website_sale_order and website_sale_order.cart_commission_total > 0" class="smart-total-with-commission">
+                <td colspan="2" class="text-start border-top py-2">
+                    <strong class="text-success">
+                        <i class="fa fa-check-circle me-1" aria-hidden="true"/>Total to Pay
+                    </strong>
+                </td>
+                <td class="text-end border-top py-2">
+                    <strong class="h5 text-success mb-0">
+                        <t t-esc="website_sale_order.amount_total_with_commission" t-options="{'widget': 'monetary', 'display_currency': website_sale_order.currency_id}"/>
+                    </strong>
+                    <div class="small text-muted">
+                        (Includes <t t-esc="website_sale_order.cart_commission_total" t-options="{'widget': 'monetary', 'display_currency': website_sale_order.currency_id}"/> platform fee)
+                    </div>
                 </td>
             </tr>
         </xpath>

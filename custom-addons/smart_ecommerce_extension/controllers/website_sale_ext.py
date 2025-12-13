@@ -19,6 +19,15 @@ class WebsiteSaleExtension(WebsiteSale):
             search, category, attrib_values, search_in_description
         )
         
+        # IMPORTANT: Only show products from approved sellers
+        # Products without seller are allowed (regular shop products)
+        # Products with seller must have seller state = 'approved' and can_do_commercial_actions = True
+        domain.append('|')
+        domain.append(('seller_id', '=', False))
+        domain.append('&')
+        domain.append(('seller_id.state', '=', 'approved'))
+        domain.append(('seller_id.can_do_commercial_actions', '=', True))
+        
         # Seller/Store filter
         seller_id = request.params.get('seller_id')
         if seller_id:

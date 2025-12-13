@@ -17,6 +17,20 @@ class SaleOrder(models.Model):
         index=True,
     )
     
+    # Commission fields for cart display
+    cart_commission_total = fields.Monetary(
+        string='Platform Commission',
+        compute='_compute_cart_commission',
+        currency_field='currency_id',
+        help='Total platform commission for this order',
+    )
+    amount_total_with_commission = fields.Monetary(
+        string='Total (with Commission)',
+        compute='_compute_cart_commission',
+        currency_field='currency_id',
+        help='Order total including platform commission',
+    )
+    
     # Delivery zone
     delivery_zone_id = fields.Many2one(
         'delivery.zone',
@@ -98,6 +112,66 @@ class SaleOrder(models.Model):
                     zone = DeliveryZone.find_zone_for_city(city)
                     if zone:
                         order.delivery_zone_id = zone.id
+
+    @api.depends('order_line.price_subtotal', 'order_line.product_id', 'amount_total')
+    def _compute_cart_commission(self):
+        """Compute total platform commission for cart display"""
+        for order in self:
+            total_commission = 0.0
+            
+            # Calculate commission for each seller's products
+            for line in order.order_line.filtered(lambda l: not l.is_delivery):
+                seller = line.product_id.product_tmpl_id.seller_id
+                if seller and seller.id and seller.commission_rate:
+                    # Commission = line subtotal * seller's commission rate / 100
+                    line_commission = line.price_subtotal * (seller.commission_rate / 100)
+                    total_commission += line_commission
+            
+            order.cart_commission_total = total_commission
+            order.amount_total_with_commission = order.amount_total + total_commission
+
+    def get_cart_seller_breakdown(self):
+        """
+        Get breakdown of cart by seller including commission for each.
+        Returns list of dicts with seller info, subtotal, and commission.
+        """
+        self.ensure_one()
+        breakdown = []
+        
+        # Group lines by seller
+        seller_data = {}
+        for line in self.order_line.filtered(lambda l: not l.is_delivery):
+            seller = line.product_id.product_tmpl_id.seller_id
+            if seller and seller.id:
+                if seller.id not in seller_data:
+                    seller_data[seller.id] = {
+                        'seller': seller,
+                        'lines': self.env['sale.order.line'],
+                        'subtotal': 0.0,
+                    }
+                seller_data[seller.id]['lines'] |= line
+                seller_data[seller.id]['subtotal'] += line.price_subtotal
+        
+        # Calculate commission for each seller
+        for seller_id, data in seller_data.items():
+            seller = data['seller']
+            subtotal = data['subtotal']
+            commission_rate = seller.commission_rate or 0.0
+            commission_amount = subtotal * (commission_rate / 100)
+            
+            breakdown.append({
+                'seller_id': seller.id,
+                'seller_name': seller.company_name,
+                'store_logo': seller.store_logo,
+                'lines': data['lines'],
+                'line_count': len(data['lines']),
+                'subtotal': subtotal,
+                'commission_rate': commission_rate,
+                'commission_amount': commission_amount,
+                'total_with_commission': subtotal + commission_amount,
+            })
+        
+        return breakdown
 
     @api.depends('order_line.product_id', 'order_line.product_id.seller_id')
     def _compute_seller_ids(self):
